@@ -72,7 +72,6 @@ const categories: Category[] = [
     name: "Cloud",
     skills: [
       { name: "AWS", level: "Advanced", years: 2 },
-      { name: "Vercel", level: "Advanced", years: 3 },
       { name: "GCP", level: "Intermediate", years: 1 },
       { name: "Firebase", level: "Intermediate", years: 2 },
     ],
