@@ -3,6 +3,9 @@ node_modules/
 .next/
 out/
 
+# CI-generated data (rebuilt on every deploy)
+public/github-data.json
+
 # Environment
 .env*.local
 

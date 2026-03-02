@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  schedule:
+    # Re-fetch GitHub data daily at midnight UTC so contributions stay current
+    - cron: '0 0 * * *'
 
 jobs:
   build-and-deploy:
@@ -11,24 +14,35 @@ jobs:
     permissions:
       contents: write
     env:
-      # This is a user site (username.github.io), so REPO_NAME is empty
+      # REPO_NAME is empty for username.github.io user sites
       REPO_NAME: ''
-      NEXT_PUBLIC_GITHUB_TOKEN: ${{ secrets.NEXT_PUBLIC_GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v3
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
           version: 8
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
           cache: 'pnpm'
+
       - name: Install dependencies
         run: pnpm install
+
+      - name: Fetch GitHub contribution data
+        # Uses a secret token that stays on the server — never baked into the bundle
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_DATA_TOKEN }}
+          GITHUB_HANDLE: agrimgarg08
+        run: node scripts/fetch-github-data.mjs
+
       - name: Build and export static site
         run: pnpm run export
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:

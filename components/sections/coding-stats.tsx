@@ -433,7 +433,8 @@ function useLeetCode(handle: string) {
   return { heatmap, ratingHistory, contests, totalSolved }
 }
 
-// GitHub GraphQL (needs a token in NEXT_PUBLIC_GITHUB_TOKEN or similar)
+// GitHub data is fetched at BUILD TIME by scripts/fetch-github-data.mjs
+// and written to public/github-data.json — no token is ever sent to the browser.
 function useGitHub(handle: string) {
   const [heatmap, setHeatmap] = useState<HeatmapEntry[]>([])
   const [streaks, setStreaks] = useState<{ max: number; current: number }>({
@@ -449,7 +450,7 @@ function useGitHub(handle: string) {
         const CACHE_KEY = `github_data_${handle}`
         const CACHE_EXPIRY = 60 * 60 * 1000 // 1 hour
 
-        // 1. Check Cache
+        // 1. Check localStorage cache
         const cachedStr = localStorage.getItem(CACHE_KEY)
         if (cachedStr) {
           try {
@@ -461,126 +462,44 @@ function useGitHub(handle: string) {
               if (cached.totalRepos != null) setTotalRepos(cached.totalRepos)
               return
             }
-          } catch (e) {
-            // cache invalid, ignore
+          } catch {
+            // cache invalid, continue to fetch
           }
         }
 
-        // 2. Fetch User Creation Date to determine years active
-        const initQuery = `
-          query($login:String!) {
-            user(login: $login) {
-              createdAt
-              repositories(privacy: PUBLIC, ownerAffiliations: OWNER) {
-                totalCount
-              }
-            }
-          }
-        `
+        // 2. Fetch the pre-built static JSON (no token needed)
+        const res = await fetch("/github-data.json")
+        if (!res.ok) throw new Error(`Failed to fetch github-data.json: ${res.status}`)
 
-        const token = process.env.NEXT_PUBLIC_GITHUB_TOKEN
-        if (!token) {
-          console.warn("NEXT_PUBLIC_GITHUB_TOKEN is not defined in .env.local")
-          return
-        }
+        const data = await res.json()
 
-        const headers = {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        }
+        // data shape: { totalContributions, totalRepos, heatmap: [{date, count}] }
+        const finalHeatmap: HeatmapEntry[] = (data.heatmap ?? [])
+          .sort((a: HeatmapEntry, b: HeatmapEntry) => a.date.localeCompare(b.date))
 
-        const initRes = await fetch("https://api.github.com/graphql", {
-          method: "POST", headers,
-          body: JSON.stringify({ query: initQuery, variables: { login: handle } }),
-        })
-        if (!initRes.ok) throw new Error(`GitHub API Init Error: ${initRes.status}`)
-
-        const initJson = await initRes.json()
-        if (initJson.errors) throw new Error(initJson.errors[0]?.message || "GraphQL Error")
-
-        const creationYear = new Date(initJson.data.user.createdAt).getFullYear()
-        const currentYear = new Date().getFullYear()
-        const finalRepos = initJson.data.user.repositories?.totalCount || 0
-        setTotalRepos(finalRepos)
-
-        // 3. Parallel fetch all years
-        const calendarFetches = []
-        for (let y = creationYear; y <= currentYear; y++) {
-          const from = `${y}-01-01T00:00:00Z`
-          const to = `${y}-12-31T23:59:59Z`
-
-          const yearQuery = `
-            query($login:String!, $from:DateTime!, $to:DateTime!) {
-              user(login: $login) {
-                contributionsCollection(from: $from, to: $to) {
-                  contributionCalendar {
-                    totalContributions
-                    weeks {
-                      contributionDays {
-                        date
-                        contributionCount
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          `
-
-          calendarFetches.push(
-            fetch("https://api.github.com/graphql", {
-              method: "POST", headers,
-              body: JSON.stringify({ query: yearQuery, variables: { login: handle, from, to } }),
-            }).then(r => r.json())
-          )
-        }
-
-        const yearResults = await Promise.all(calendarFetches)
-
-        const map: Record<string, number> = {}
-        let finalTotal = 0
-
-        for (const json of yearResults) {
-          if (json.errors) continue
-
-          const collection = json.data?.user?.contributionsCollection
-          if (!collection) continue
-
-          finalTotal += collection.contributionCalendar?.totalContributions || 0
-
-          const weeks = collection.contributionCalendar?.weeks || []
-          weeks.forEach((w: any) => {
-            w.contributionDays.forEach((d: any) => {
-              map[d.date] = d.contributionCount
-            })
-          })
-        }
-
-        const finalHeatmap = Object.entries(map).map(([date, count]) => ({ date, count }))
-        // Sort explicitly by date ascending just in case async returned out of order
-        finalHeatmap.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        const finalTotal: number = data.totalContributions ?? 0
+        const finalRepos: number = data.totalRepos ?? 0
+        const finalStreaks = calcStreaks(finalHeatmap)
 
         setHeatmap(finalHeatmap)
-
-        const finalStreaks = calcStreaks(finalHeatmap)
         setStreaks(finalStreaks)
-
         setTotalContributions(finalTotal)
+        setTotalRepos(finalRepos)
 
-        // 3. Save to Cache
+        // 3. Cache in localStorage so subsequent visits are instant
         try {
           localStorage.setItem(CACHE_KEY, JSON.stringify({
             timestamp: Date.now(),
             heatmap: finalHeatmap,
             streaks: finalStreaks,
             totalContributions: finalTotal,
-            totalRepos: finalRepos
+            totalRepos: finalRepos,
           }))
-        } catch (e) {
-          console.warn("Failed saving cache", e)
+        } catch {
+          // localStorage full or unavailable — silently ignore
         }
       } catch (e) {
-        console.warn("GitHub fetch failed", e)
+        console.warn("GitHub data fetch failed:", e)
       }
     }
     load()
@@ -588,6 +507,7 @@ function useGitHub(handle: string) {
 
   return { heatmap, streaks, totalContributions, totalRepos }
 }
+
 
 // -----------------------------------------------------------------------------
 // UI components that accept dynamic data
