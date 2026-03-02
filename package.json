@@ -4,9 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    // `export` builds and then exports to the `out` directory
     "export": "next build && next export",
-    // tools like gh-pages will publish the contents of `out`
     "predeploy": "npm run export",
     "deploy": "gh-pages -d out",
     "build": "next build",
