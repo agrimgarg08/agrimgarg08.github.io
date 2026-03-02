@@ -24,12 +24,6 @@ const achievements: Achievement[] = [
     icon: Star,
   },
   {
-    title: "CodeChef 3-Star",
-    description: "Achieved 3-star rating with multiple top 100 finishes in Long Challenges",
-    category: "Competitive Programming",
-    icon: Medal,
-  },
-  {
     title: "Google Code Jam - Round 2",
     description: "Advanced to Round 2 in 2024, placing top 3000 globally",
     category: "Competitive Programming",

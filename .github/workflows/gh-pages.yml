@@ -13,6 +13,7 @@ jobs:
     env:
       # This is a user site (username.github.io), so REPO_NAME is empty
       REPO_NAME: ''
+      NEXT_PUBLIC_GITHUB_TOKEN: ${{ secrets.NEXT_PUBLIC_GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v3
       - name: Setup pnpm
