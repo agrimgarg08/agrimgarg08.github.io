@@ -18,7 +18,7 @@ export function CustomCursor() {
       pos.current = { x: e.clientX, y: e.clientY }
       if (!visible) setVisible(true)
       if (dotRef.current) {
-        dotRef.current.style.transform = `translate(${e.clientX - 4}px, ${e.clientY - 4}px)`
+        dotRef.current.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`
       }
     }
 
@@ -34,7 +34,7 @@ export function CustomCursor() {
       ringPos.current.x += (pos.current.x - ringPos.current.x) * 0.15
       ringPos.current.y += (pos.current.y - ringPos.current.y) * 0.15
       if (ringRef.current) {
-        ringRef.current.style.transform = `translate(${ringPos.current.x - 20}px, ${ringPos.current.y - 20}px)`
+        ringRef.current.style.transform = `translate(${ringPos.current.x}px, ${ringPos.current.y}px)`
       }
       raf = requestAnimationFrame(animateRing)
     }
@@ -79,7 +79,7 @@ export function CustomCursor() {
         }}
       >
         <div
-          className="rounded-full bg-foreground"
+          className="rounded-full bg-foreground -translate-x-1/2 -translate-y-1/2"
           style={{
             width: hovering ? 6 : 8,
             height: hovering ? 6 : 8,
@@ -96,7 +96,7 @@ export function CustomCursor() {
         }}
       >
         <div
-          className="rounded-full border border-foreground/30"
+          className="rounded-full border border-foreground/30 -translate-x-1/2 -translate-y-1/2"
           style={{
             width: hovering ? 48 : 40,
             height: hovering ? 48 : 40,

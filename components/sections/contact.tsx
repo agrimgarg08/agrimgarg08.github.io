@@ -1,145 +1,53 @@
+
 "use client"
 
-import { useState } from "react"
 import { SectionHeading } from "@/components/ui-helpers"
-import { Mail, MapPin, Send, Github, Linkedin, CheckCircle2, ExternalLink } from "lucide-react"
+import { Mail, Linkedin } from "lucide-react"
+import { siteConfig } from "@/config/site"
 
 export function ContactSection() {
-  const [submitted, setSubmitted] = useState(false)
-  const [formState, setFormState] = useState({ name: "", email: "", message: "" })
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitted(true)
-    setTimeout(() => {
-      setSubmitted(false)
-      setFormState({ name: "", email: "", message: "" })
-    }, 3000)
-  }
-
   return (
     <section id="contact" className="px-6 py-24">
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-2xl">
         <SectionHeading
           title="Get In Touch"
-          subtitle="Have a project in mind or want to connect? Let's talk."
+          subtitle="Have a project in mind or want to connect? Reach out directly."
         />
 
-        <div className="grid gap-10 lg:grid-cols-2">
-          {/* Form */}
-          <div className="rounded-xl border border-border bg-card p-6">
-            {submitted ? (
-              <div className="flex h-full flex-col items-center justify-center gap-4 py-12">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-chart-3/10">
-                  <CheckCircle2 className="h-8 w-8 text-chart-3" />
-                </div>
-                <h3 className="text-lg font-semibold text-foreground">Message Sent!</h3>
-                <p className="text-sm text-muted-foreground">Thanks for reaching out. I will get back to you soon.</p>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                  <label htmlFor="name" className="mb-1.5 block text-sm font-medium text-foreground">Name</label>
-                  <input
-                    id="name"
-                    type="text"
-                    required
-                    value={formState.name}
-                    onChange={(e) => setFormState({ ...formState, name: e.target.value })}
-                    className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="Your name"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-foreground">Email</label>
-                  <input
-                    id="email"
-                    type="email"
-                    required
-                    value={formState.email}
-                    onChange={(e) => setFormState({ ...formState, email: e.target.value })}
-                    className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="you@example.com"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="message" className="mb-1.5 block text-sm font-medium text-foreground">Message</label>
-                  <textarea
-                    id="message"
-                    required
-                    rows={5}
-                    value={formState.message}
-                    onChange={(e) => setFormState({ ...formState, message: e.target.value })}
-                    className="w-full resize-none rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="Your message..."
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/20"
-                >
-                  <Send className="h-4 w-4" />
-                  Send Message
-                </button>
-              </form>
-            )}
-          </div>
-
-          {/* Contact info */}
-          <div className="flex flex-col justify-between gap-8">
-            <div className="space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <Mail className="h-5 w-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-foreground">Email</h4>
-                  <a href="mailto:agrimgarg247@gmail.com" className="text-sm text-muted-foreground transition-colors hover:text-primary">agrimgarg247@gmail.com</a>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <MapPin className="h-5 w-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-foreground">Location</h4>
-                  <p className="text-sm text-muted-foreground">New Delhi, India</p>
-                </div>
-              </div>
+        <div className="flex flex-col gap-4">
+          {/* Email */}
+          <a
+            href={`mailto:${siteConfig.email}`}
+            className="group flex items-center gap-5 rounded-xl border border-border bg-card p-6 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
+          >
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
+              <Mail className="h-5 w-5" />
             </div>
-
-            {/* Social links */}
             <div>
-              <h4 className="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Connect</h4>
-              <div className="flex gap-3">
-                {[
-                  { icon: Github, label: "GitHub", href: "https://github.com/agrimgarg08" },
-                  { icon: Linkedin, label: "LinkedIn", href: "https://linkedin.com/in/agrim-garg" },
-                  { icon: ExternalLink, label: "Codolio", href: "https://codolio.com/profile/agrimgarg" },
-                ].map((social) => (
-                  <a
-                    key={social.label}
-                    href={social.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={social.label}
-                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-all hover:border-primary/20 hover:bg-primary/10 hover:text-primary"
-                  >
-                    <social.icon className="h-4 w-4" />
-                  </a>
-                ))}
-              </div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Email</p>
+              <p className="mt-0.5 text-base font-medium text-foreground transition-colors group-hover:text-primary">
+                {siteConfig.email}
+              </p>
             </div>
+          </a>
 
-            {/* Resume link */}
-            <a
-              href="/resume.pdf"
-              className="inline-flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80"
-            >
-              Download Resume (PDF)
-              <span aria-hidden="true">&rarr;</span>
-            </a>
-          </div>
+          {/* LinkedIn */}
+          <a
+            href={siteConfig.links.linkedin}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group flex items-center gap-5 rounded-xl border border-border bg-card p-6 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
+          >
+            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
+              <Linkedin className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">LinkedIn</p>
+              <p className="mt-0.5 text-base font-medium text-foreground transition-colors group-hover:text-primary">
+                linkedin.com/in/{siteConfig.handles.linkedin}
+              </p>
+            </div>
+          </a>
         </div>
       </div>
     </section>

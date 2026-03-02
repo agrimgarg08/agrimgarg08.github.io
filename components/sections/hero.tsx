@@ -5,9 +5,9 @@ import { ArrowDown, ExternalLink } from "lucide-react"
 
 const roles = [
   "Data Structures & Algorithms",
-  "Full Stack Systems",
-  "Performance Engineering",
-  "Distributed Systems",
+  "Problem Solving",
+  "Logical Reasoning",
+  "Cyber Security",
 ]
 
 export function HeroSection() {

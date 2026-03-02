@@ -11,6 +11,7 @@ import {
   AreaChart,
 } from "recharts"
 import { SectionHeading, AnimatedCounter } from "@/components/ui-helpers"
+import { siteConfig } from "@/config/site"
 import { cn } from "@/lib/utils"
 import {
   ExternalLink,
@@ -19,6 +20,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react"
+import { useRef } from "react"
 
 // -----------------------------------------------------------------------------
 // Types & constants
@@ -51,29 +53,51 @@ interface ContestEntry {
   platform: Platform
   rank: number
   change: string
-  date: string
+  date: string          // ISO YYYY-MM-DD — used for sorting
+  displayDate?: string  // human-friendly label shown in the table
 }
 
 const platformList: PlatformInfo[] = [
   {
     name: "LeetCode",
-    handle: "agrimgarg",
-    url: "https://leetcode.com/u/agrimgarg",
+    handle: siteConfig.handles.leetcode,
+    url: siteConfig.links.leetcode,
     color: "#FFA116",
   },
   {
     name: "Codeforces",
-    handle: "agrimgarg",
-    url: "https://codeforces.com/profile/agrimgarg",
+    handle: siteConfig.handles.codeforces,
+    url: siteConfig.links.codeforces,
     color: "#1F8ACB",
   },
   {
     name: "GitHub",
-    handle: "agrimgarg08",
-    url: "https://github.com/agrimgarg08",
+    handle: siteConfig.handles.github,
+    url: siteConfig.links.github,
     color: "#8B5CF6",
   },
 ]
+
+// LeetCode rank thresholds (based on contest rating)
+function getLeetCodeRank(rating: number): { label: string; color: string } {
+  if (rating >= 2228.90) return { label: "Guardian", color: "#699FE6" }
+  if (rating >= 1842.73) return { label: "Knight", color: "#60CA9B" }
+  return { label: "No Badge", color: "#CCCCCC" }
+}
+
+// Codeforces rank thresholds
+function getCodeforcesRank(rating: number): { label: string; color: string } {
+  if (rating >= 3000) return { label: "Legendary Grandmaster", color: "#FF0000" }
+  if (rating >= 2600) return { label: "International Grandmaster", color: "#FF0000" }
+  if (rating >= 2400) return { label: "Grandmaster", color: "#FF3333" }
+  if (rating >= 2300) return { label: "International Master", color: "#FF8C00" }
+  if (rating >= 2100) return { label: "Master", color: "#FF8C00" }
+  if (rating >= 1900) return { label: "Candidate Master", color: "#AA00AA" }
+  if (rating >= 1600) return { label: "Expert", color: "#0084FF" }
+  if (rating >= 1400) return { label: "Specialist", color: "#03A89E" }
+  if (rating >= 1200) return { label: "Pupil", color: "#03a903" }
+  return { label: "Newbie", color: "#808080" }
+}
 
 // -----------------------------------------------------------------------------
 // Helper functions for transforming API data
@@ -95,11 +119,18 @@ function mergeHeatmaps(heatmaps: Record<Platform, HeatmapEntry[]>) {
 function calcStreaks(entries: HeatmapEntry[]) {
   let max = 0
   let current = 0
-  let prevDate: string | null = null
+  let prevDateStr: string | null = null
   entries.forEach(({ date, count }) => {
     if (count > 0) {
-      if (prevDate && new Date(date).getTime() - new Date(prevDate).getTime() === 86400000) {
-        current += 1
+      // Compare dates by UTC day number to avoid DST 23/25-hour day bugs
+      if (prevDateStr) {
+        const prev = new Date(prevDateStr)
+        const cur = new Date(date)
+        // diff in whole UTC days
+        const diffDays = Math.round(
+          (cur.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24)
+        )
+        current = diffDays === 1 ? current + 1 : 1
       } else {
         current = 1
       }
@@ -107,7 +138,7 @@ function calcStreaks(entries: HeatmapEntry[]) {
     } else {
       current = 0
     }
-    prevDate = date
+    prevDateStr = date
   })
   return { max, current }
 }
@@ -129,53 +160,105 @@ function useCodeforces(handle: string) {
   const [heatmap, setHeatmap] = useState<HeatmapEntry[]>([])
   const [ratingHistory, setRatingHistory] = useState<RatingEntry[]>([])
   const [contests, setContests] = useState<ContestEntry[]>([])
+  const [totalSolved, setTotalSolved] = useState(0)
 
   useEffect(() => {
     async function load() {
       try {
+        const CACHE_KEY = `codeforces_data_${handle}`
+        const CACHE_EXPIRY = 60 * 60 * 1000 // 1 hour
+
+        // 1. Check Cache
+        const cachedStr = localStorage.getItem(CACHE_KEY)
+        if (cachedStr) {
+          try {
+            const cached = JSON.parse(cachedStr)
+            if (Date.now() - cached.timestamp < CACHE_EXPIRY) {
+              setHeatmap(cached.heatmap)
+              setRatingHistory(cached.ratingHistory)
+              setContests(cached.contests)
+              if (cached.totalSolved != null) setTotalSolved(cached.totalSolved)
+              return // skip fetching
+            }
+          } catch (e) {
+            // cache invalid, ignore
+          }
+        }
+
+        let finalHeatmap: HeatmapEntry[] = []
+        let finalHist: RatingEntry[] = []
+        let finalContests: ContestEntry[] = []
+
+        // 2. Fetch User Status (for Heatmap)
         const statusRes = await fetch(
           `https://codeforces.com/api/user.status?handle=${handle}`
         )
         const statusData = await statusRes.json()
+        let finalSolvedCF = 0
         if (statusData.status === "OK") {
           const byDate: Record<string, number> = {}
+          const solvedSet = new Set<string>()
           statusData.result.forEach((sub: any) => {
             if (sub.verdict === "OK") {
               const d = new Date(sub.creationTimeSeconds * 1000)
                 .toISOString()
                 .slice(0, 10)
               byDate[d] = (byDate[d] || 0) + 1
+              const key = `${sub.problem.contestId}-${sub.problem.index}`
+              solvedSet.add(key)
             }
           })
-          setHeatmap(
-            Object.entries(byDate).map(([date, count]) => ({ date, count }))
-          )
+          finalHeatmap = Object.entries(byDate).map(([date, count]) => ({ date, count }))
+          setHeatmap(finalHeatmap)
+          finalSolvedCF = solvedSet.size
+          setTotalSolved(finalSolvedCF)
         }
 
+        // 3. Fetch Rating History
         const ratingRes = await fetch(
           `https://codeforces.com/api/user.rating?handle=${handle}`
         )
         const ratingData = await ratingRes.json()
         if (ratingData.status === "OK") {
-          const hist = ratingData.result.map((r: any) => ({
-            contest: r.contestName,
-            date: new Date(r.ratingUpdateTimeSeconds * 1000)
-              .toLocaleDateString("en-US", { month: "short", year: "numeric" }),
-            rating: r.newRating,
-            change: r.newRating - r.oldRating,
-          }))
-          setRatingHistory(hist)
-          setContests(
-            ratingData.result.map((r: any) => ({
+          finalHist = ratingData.result.map((r: any) => {
+            const iso = new Date(r.ratingUpdateTimeSeconds * 1000).toISOString().slice(0, 10)
+            return {
+              contest: r.contestName,
+              date: iso,
+              displayDate: new Date(r.ratingUpdateTimeSeconds * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+              rating: r.newRating,
+              change: r.newRating - r.oldRating,
+            }
+          })
+          setRatingHistory(finalHist)
+
+          finalContests = ratingData.result.map((r: any) => {
+            const iso = new Date(r.ratingUpdateTimeSeconds * 1000).toISOString().slice(0, 10)
+            return {
               name: r.contestName,
               platform: "Codeforces",
-              rank: r.newRating, // placeholder
+              rank: r.rank,
               change:
                 (r.newRating - r.oldRating >= 0 ? "+" : "") +
                 (r.newRating - r.oldRating),
-              date: new Date(r.ratingUpdateTimeSeconds * 1000).toLocaleDateString(),
-            }))
-          )
+              date: iso,
+              displayDate: new Date(r.ratingUpdateTimeSeconds * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+            }
+          })
+          setContests(finalContests)
+        }
+
+        // 4. Save to Cache
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({
+            timestamp: Date.now(),
+            heatmap: finalHeatmap,
+            ratingHistory: finalHist,
+            contests: finalContests,
+            totalSolved: finalSolvedCF
+          }))
+        } catch (e) {
+          console.warn("Failed saving CF cache", e)
         }
       } catch (e) {
         console.warn("CF fetch failed", e)
@@ -184,14 +267,15 @@ function useCodeforces(handle: string) {
     load()
   }, [handle])
 
-  return { heatmap, ratingHistory, contests }
+  return { heatmap, ratingHistory, contests, totalSolved }
 }
 
-// LeetCode API (GraphQL)
+// LeetCode API via alfa-leetcode-api public proxy (works on GitHub Pages / static exports)
 function useLeetCode(handle: string) {
   const [heatmap, setHeatmap] = useState<HeatmapEntry[]>([])
   const [ratingHistory, setRatingHistory] = useState<RatingEntry[]>([])
   const [contests, setContests] = useState<ContestEntry[]>([])
+  const [totalSolved, setTotalSolved] = useState(0)
 
   // helper to fill gaps between dates
   function fillCalendar(entries: Record<string, number>): HeatmapEntry[] {
@@ -210,127 +294,143 @@ function useLeetCode(handle: string) {
   useEffect(() => {
     async function load() {
       try {
-        const calQuery = `
-          query userProfileCalendar($username: String!, $year: Int) {
-            matchedUser(username: $username) {
-              userCalendar(year: $year) {
-                activeYears
-                submissionCalendar
-              }
+        const CACHE_KEY = `leetcode_data_${handle}`
+        const CACHE_EXPIRY = 60 * 60 * 1000 // 1 hour
+
+        // 1. Check Cache
+        const cachedStr = localStorage.getItem(CACHE_KEY)
+        if (cachedStr) {
+          try {
+            const cached = JSON.parse(cachedStr)
+            if (Date.now() - cached.timestamp < CACHE_EXPIRY) {
+              setHeatmap(cached.heatmap)
+              setRatingHistory(cached.ratingHistory)
+              setContests(cached.contests)
+              if (cached.totalSolved != null) setTotalSolved(cached.totalSolved)
+              return // skip fetching
             }
+          } catch (e) {
+            // cache invalid, ignore
           }
-        `
-        // fetch active years and then per-year calendars
-        let combined: Record<string, number> = {}
-        const baseRes = await fetch("/api/leetcode", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: calQuery, variables: { username: handle, year: null } }),
-        })
-        console.log("LeetCode baseRes status", baseRes.status)
-        const baseJson = await baseRes.json()
-        console.log("LeetCode baseJson", baseJson)
-        const calendarInfo = baseJson.data?.matchedUser?.userCalendar
-        if (calendarInfo) {
-          const years: number[] = calendarInfo.activeYears || []
-          for (const y of years) {
-            const yearRes = await fetch("/api/leetcode", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ query: calQuery, variables: { username: handle, year: y } }),
-            })
-            console.log("LeetCode year", y, "status", yearRes.status)
-            const yearJson = await yearRes.json()
-            console.log("LeetCode yearJson", yearJson)
-            const calStr =
-              yearJson.data?.matchedUser?.userCalendar?.submissionCalendar
-            if (calStr) {
-              try {
-                const ycal: Record<string, number> = JSON.parse(calStr)
-                Object.entries(ycal).forEach(([d, c]) => {
-                  // original keys are unix seconds; convert to ISO date string
-                  const iso = new Date(Number(d) * 1000)
-                    .toISOString()
-                    .slice(0, 10)
-                  combined[iso] = (combined[iso] || 0) + c
-                })
-              } catch (err) {
-                console.warn("parse calendar year", y, err)
-              }
-            }
-          }
-          setHeatmap(fillCalendar(combined))
         }
 
-        // fetch contest ranking info
-        const contestQuery = `
-          query userContestRankingInfo($username: String!) {
-            userContestRanking(username: $username) {
-              attendedContestsCount
-              rating
-              globalRanking
-              totalParticipants
-              topPercentage
-              badge { name }
-            }
-            userContestRankingHistory(username: $username) {
-              attended
-              trendDirection
-              problemsSolved
-              totalProblems
-              finishTimeInSeconds
-              rating
-              ranking
-              contest { title startTime }
+        // 2. Fetch Base Calendar
+        const calRes = await fetch(`https://alfa-leetcode-api.onrender.com/${handle}/calendar`)
+        const calJson = await calRes.json()
+
+        const combined: Record<string, number> = {}
+        const activeYears: number[] = calJson.activeYears || []
+
+        // Fetch all years in parallel to be fast
+        const yearFetches = activeYears.map(year =>
+          fetch(`https://alfa-leetcode-api.onrender.com/${handle}/calendar?year=${year}`)
+            .then(res => res.json())
+            .catch(err => {
+              console.warn(`Failed fetching year ${year}`, err)
+              return null
+            })
+        )
+
+        const yearResults = await Promise.all(yearFetches)
+
+        for (const yearData of yearResults) {
+          if (!yearData) continue
+          const calStr = yearData.submissionCalendar
+          if (calStr) {
+            try {
+              const ycal: Record<string, number> = JSON.parse(calStr)
+              Object.entries(ycal).forEach(([timestamp, count]) => {
+                // timestamps are in unix seconds
+                const iso = new Date(Number(timestamp) * 1000).toISOString().slice(0, 10)
+                combined[iso] = (combined[iso] || 0) + count
+              })
+            } catch (err) {
+              console.warn("Failed parsing calendar string", err)
             }
           }
-        `
-        const rres = await fetch("/api/leetcode", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: contestQuery, variables: { username: handle } }),
+        }
+
+        const finalHeatmap = fillCalendar(combined)
+        setHeatmap(finalHeatmap)
+
+        // 3. Fetch Contest Ranking history
+        const conRes = await fetch(`https://alfa-leetcode-api.onrender.com/${handle}/contest`)
+        const conJson = await conRes.json()
+
+        let prevRating = 1500 // LeetCode starting rating rating
+        const historyRaw = conJson.contestParticipation || []
+
+        let hist: RatingEntry[] = historyRaw.map((r: any) => {
+          const iso = new Date(r.contest.startTime * 1000).toISOString().slice(0, 10)
+
+          return {
+            contest: r.contest.title,
+            date: iso,
+            displayDate: new Date(r.contest.startTime * 1000).toLocaleDateString(
+              "en-US",
+              { month: "short", day: "numeric", year: "numeric" }
+            ),
+            rating: Math.round(r.rating),
+          }
         })
-        console.log("LeetCode contest status", rres.status)
-        const rjson = await rres.json()
-        console.log("LeetCode contest json", rjson)
-        const user = rjson.data
-        if (user) {
-          let hist: RatingEntry[] =
-            rjson.data?.userContestRankingHistory.map((r: any) => {
-              const iso = new Date(r.contest.startTime * 1000)
-                .toISOString()
-                .slice(0, 10)
-              return {
-                contest: r.contest.title,
-                date: iso,
-                displayDate: new Date(r.contest.startTime * 1000).toLocaleDateString(
-                  "en-US",
-                  { month: "short", day: "numeric", year: "numeric" }
-                ),
-                rating: Math.round(r.rating),
-              }
-            }) || []
-          // sort descending by date (most recent first)
-          hist = hist.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-          setRatingHistory(hist)
-          setContests(
-            hist.map((h) => ({
-              name: h.contest,
-              platform: "LeetCode",
-              rank: 0,
-              change: "",
-              date: h.displayDate,
-            }))
-          )
+
+        // Generate contest list (descending date) with display rank and change
+        let computedContests: ContestEntry[] = historyRaw.map((r: any) => {
+          const iso = new Date(r.contest.startTime * 1000).toISOString().slice(0, 10)
+          const changeVal = r.rating - prevRating
+          prevRating = r.rating // for next iteration
+
+          return {
+            name: r.contest.title,
+            platform: "LeetCode",
+            rank: r.ranking,
+            change: (changeVal >= 0 ? "+" : "") + Math.round(changeVal),
+            date: iso,
+            displayDate: new Date(r.contest.startTime * 1000).toLocaleDateString(
+              "en-US",
+              { month: "short", day: "numeric", year: "numeric" }
+            ),
+          }
+        })
+
+        // Sort histories explicitly
+        hist.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        computedContests.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+        setRatingHistory(hist)
+        setContests(computedContests)
+
+        // Fetch problems solved count
+        let finalSolved = 0
+        try {
+          const solvedRes = await fetch(`https://alfa-leetcode-api.onrender.com/${handle}/solved`)
+          const solvedJson = await solvedRes.json()
+          finalSolved = solvedJson.solvedProblem || 0
+          setTotalSolved(finalSolved)
+        } catch (e) {
+          console.warn("LeetCode solved fetch failed", e)
+        }
+
+        // 4. Save to Cache
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({
+            timestamp: Date.now(),
+            heatmap: finalHeatmap,
+            ratingHistory: hist,
+            contests: computedContests,
+            totalSolved: finalSolved
+          }))
+        } catch (e) {
+          console.warn("Failed saving cache", e)
         }
       } catch (e) {
         console.warn("LeetCode fetch failed", e)
       }
     }
-    load()
+    if (handle) load()
   }, [handle])
 
-  return { heatmap, ratingHistory, contests }
+  return { heatmap, ratingHistory, contests, totalSolved }
 }
 
 // GitHub GraphQL (needs a token in NEXT_PUBLIC_GITHUB_TOKEN or similar)
@@ -340,57 +440,145 @@ function useGitHub(handle: string) {
     max: 0,
     current: 0,
   })
+  const [totalContributions, setTotalContributions] = useState(0)
+  const [totalRepos, setTotalRepos] = useState(0)
 
   useEffect(() => {
     async function load() {
       try {
-        // Use internal proxy to avoid exposing tokens client-side and to
-        // ensure the server-side token (GITHUB_TOKEN) is used when available.
-        const query = `
+        const CACHE_KEY = `github_data_${handle}`
+        const CACHE_EXPIRY = 60 * 60 * 1000 // 1 hour
+
+        // 1. Check Cache
+        const cachedStr = localStorage.getItem(CACHE_KEY)
+        if (cachedStr) {
+          try {
+            const cached = JSON.parse(cachedStr)
+            if (Date.now() - cached.timestamp < CACHE_EXPIRY) {
+              setHeatmap(cached.heatmap)
+              setStreaks(cached.streaks)
+              setTotalContributions(cached.totalContributions)
+              if (cached.totalRepos != null) setTotalRepos(cached.totalRepos)
+              return
+            }
+          } catch (e) {
+            // cache invalid, ignore
+          }
+        }
+
+        // 2. Fetch User Creation Date to determine years active
+        const initQuery = `
           query($login:String!) {
             user(login: $login) {
-              contributionsCollection {
-                contributionCalendar {
-                  weeks {
-                    contributionDays {
-                      date
-                      contributionCount
-                    }
-                  }
-                }
-                totalCommitContributions
-                maxConsecutiveCommitContributions
-                currentConsecutiveCommitContributions
+              createdAt
+              repositories(privacy: PUBLIC, ownerAffiliations: OWNER) {
+                totalCount
               }
             }
           }
         `
-        const res = await fetch("/api/github", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ query, variables: { login: handle } }),
+
+        const token = process.env.NEXT_PUBLIC_GITHUB_TOKEN
+        if (!token) {
+          console.warn("NEXT_PUBLIC_GITHUB_TOKEN is not defined in .env.local")
+          return
+        }
+
+        const headers = {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+
+        const initRes = await fetch("https://api.github.com/graphql", {
+          method: "POST", headers,
+          body: JSON.stringify({ query: initQuery, variables: { login: handle } }),
         })
-        console.log("GitHub proxy status", res.status)
-        const json = await res.json()
-        console.log("GitHub json", json)
-        const weeks =
-          json.data?.user?.contributionsCollection?.contributionCalendar?.weeks || []
+        if (!initRes.ok) throw new Error(`GitHub API Init Error: ${initRes.status}`)
+
+        const initJson = await initRes.json()
+        if (initJson.errors) throw new Error(initJson.errors[0]?.message || "GraphQL Error")
+
+        const creationYear = new Date(initJson.data.user.createdAt).getFullYear()
+        const currentYear = new Date().getFullYear()
+        const finalRepos = initJson.data.user.repositories?.totalCount || 0
+        setTotalRepos(finalRepos)
+
+        // 3. Parallel fetch all years
+        const calendarFetches = []
+        for (let y = creationYear; y <= currentYear; y++) {
+          const from = `${y}-01-01T00:00:00Z`
+          const to = `${y}-12-31T23:59:59Z`
+
+          const yearQuery = `
+            query($login:String!, $from:DateTime!, $to:DateTime!) {
+              user(login: $login) {
+                contributionsCollection(from: $from, to: $to) {
+                  contributionCalendar {
+                    totalContributions
+                    weeks {
+                      contributionDays {
+                        date
+                        contributionCount
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          `
+
+          calendarFetches.push(
+            fetch("https://api.github.com/graphql", {
+              method: "POST", headers,
+              body: JSON.stringify({ query: yearQuery, variables: { login: handle, from, to } }),
+            }).then(r => r.json())
+          )
+        }
+
+        const yearResults = await Promise.all(calendarFetches)
+
         const map: Record<string, number> = {}
-        weeks.forEach((w: any) => {
-          w.contributionDays.forEach((d: any) => {
-            map[d.date] = d.contributionCount
+        let finalTotal = 0
+
+        for (const json of yearResults) {
+          if (json.errors) continue
+
+          const collection = json.data?.user?.contributionsCollection
+          if (!collection) continue
+
+          finalTotal += collection.contributionCalendar?.totalContributions || 0
+
+          const weeks = collection.contributionCalendar?.weeks || []
+          weeks.forEach((w: any) => {
+            w.contributionDays.forEach((d: any) => {
+              map[d.date] = d.contributionCount
+            })
           })
-        })
-        setHeatmap(
-          Object.entries(map).map(([date, count]) => ({ date, count }))
-        )
-        const maxStreak =
-          json.data?.user?.contributionsCollection?.maxConsecutiveCommitContributions || 0
-        const currStreak =
-          json.data?.user?.contributionsCollection?.currentConsecutiveCommitContributions || 0
-        setStreaks({ max: maxStreak, current: currStreak })
+        }
+
+        const finalHeatmap = Object.entries(map).map(([date, count]) => ({ date, count }))
+        // Sort explicitly by date ascending just in case async returned out of order
+        finalHeatmap.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+        setHeatmap(finalHeatmap)
+
+        const finalStreaks = calcStreaks(finalHeatmap)
+        setStreaks(finalStreaks)
+
+        setTotalContributions(finalTotal)
+
+        // 3. Save to Cache
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({
+            timestamp: Date.now(),
+            heatmap: finalHeatmap,
+            streaks: finalStreaks,
+            totalContributions: finalTotal,
+            totalRepos: finalRepos
+          }))
+        } catch (e) {
+          console.warn("Failed saving cache", e)
+        }
       } catch (e) {
         console.warn("GitHub fetch failed", e)
       }
@@ -398,7 +586,7 @@ function useGitHub(handle: string) {
     load()
   }, [handle])
 
-  return { heatmap, streaks }
+  return { heatmap, streaks, totalContributions, totalRepos }
 }
 
 // -----------------------------------------------------------------------------
@@ -406,81 +594,107 @@ function useGitHub(handle: string) {
 // -----------------------------------------------------------------------------
 
 interface HeatmapProps {
-  data: HeatmapEntry[]
+  data: HeatmapEntry[]            // year-filtered data (for grid + activeDays)
+  allTimeData: HeatmapEntry[]     // full all-time data (for max streak + current streak)
   viewMode: "activity" | "streak"
-  streaks?: { max: number; current: number }
-  problemStreaks?: { max: number; current: number }
+  streaks?: { max: number; current: number }   // GitHub streaks (all-time)
   years?: number[]
   selectedYear?: number
   onYearChange?: (year: number) => void
 }
 
-function Heatmap({ data, viewMode, streaks, problemStreaks, years, selectedYear, onYearChange }: HeatmapProps) {
+function Heatmap({ data, allTimeData, viewMode, streaks, years, selectedYear, onYearChange }: HeatmapProps) {
   const [tooltip, setTooltip] = useState<{
     date: string
     count: number
     x: number
     y: number
   } | null>(null)
+  const [yearDropdownOpen, setYearDropdownOpen] = useState(false)
+  const yearDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!yearDropdownOpen) return
+    const handler = (e: MouseEvent) => {
+      if (yearDropdownRef.current && !yearDropdownRef.current.contains(e.target as Node)) {
+        setYearDropdownOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [yearDropdownOpen])
 
   const activeDays = useMemo(() => data.filter((e) => e.count > 0).length, [data])
+  const allTimeStreaks = useMemo(() => calcStreaks(allTimeData), [allTimeData])
 
   return (
     <div className="rounded-xl border border-border bg-card p-5">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">
-          {viewMode === "activity" ? "Activity Heatmap" : "Contributions Heatmap"}
-        </h3>
-        {viewMode === "activity" && years && selectedYear !== undefined && onYearChange && (
-          <select
-            value={selectedYear}
-            onChange={(e) => onYearChange(Number(e.target.value))}
-            className="rounded bg-secondary px-2 py-1 text-sm"
-          >
-            {years.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
+      {/* Single header row: Submissions | stats | year dropdown */}
+      <div className="mb-4 flex items-center gap-6">
+        <div className="text-base font-semibold text-foreground leading-none shrink-0">
+          {viewMode === "activity" ? "Submissions" : "Contributions"}:{" "}
+          <span className="font-bold">{data.reduce((sum, e) => sum + e.count, 0)}</span>
+        </div>
+
+        {/* Stats — pushed to the right, before the dropdown */}
+        <div className="ml-auto flex items-center gap-6 text-xs text-muted-foreground">
+          {viewMode === "activity" && (
+            <>
+              <span>Active Days: <span className="font-medium text-foreground">{activeDays}</span></span>
+              <span>Max Streak: <span className="font-medium text-foreground">{allTimeStreaks.max}</span></span>
+              <span>Current Streak: <span className="font-medium text-foreground">{allTimeStreaks.current}</span></span>
+            </>
+          )}
+          {viewMode === "streak" && streaks && (
+            <>
+              <span>Active Days: <span className="font-medium text-foreground">{activeDays}</span></span>
+              <span>Max Streak: <span className="font-medium text-foreground">{streaks.max}</span></span>
+              <span>Current Streak: <span className="font-medium text-foreground">{streaks.current}</span></span>
+            </>
+          )}
+        </div>
+
+        {years && selectedYear !== undefined && onYearChange && (
+          <div ref={yearDropdownRef} className="relative shrink-0">
+            <button
+              onClick={() => setYearDropdownOpen((o) => !o)}
+              className={cn(
+                "flex items-center gap-2 rounded-lg border bg-card px-3 py-1.5 text-sm font-medium transition-all duration-200",
+                yearDropdownOpen
+                  ? "border-primary/40 text-foreground shadow-sm shadow-primary/10"
+                  : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
+              )}
+            >
+              {selectedYear}
+              <ChevronDown
+                className={cn(
+                  "h-3.5 w-3.5 transition-transform duration-200",
+                  yearDropdownOpen && "rotate-180"
+                )}
+              />
+            </button>
+            {yearDropdownOpen && (
+              <div className="absolute right-0 top-full z-20 mt-1.5 min-w-[80px] overflow-hidden rounded-xl border border-border bg-card shadow-xl shadow-black/10">
+                {years.map((y) => (
+                  <button
+                    key={y}
+                    onClick={() => { onYearChange(y); setYearDropdownOpen(false) }}
+                    className={cn(
+                      "w-full px-4 py-2 text-left text-sm transition-colors duration-150",
+                      y === selectedYear
+                        ? "bg-primary/10 font-semibold text-primary"
+                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    )}
+                  >
+                    {y}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
-
-      {viewMode === "activity" && (
-        <>
-          <div className="mb-2">
-            <span className="lc-md:text-xl mr-[5px] text-base font-medium">
-              {data.reduce((sum, e) => sum + e.count, 0)}
-            </span>
-            <span className="lc-md:text-base whitespace-nowrap text-label-2 dark:text-dark-label-2">
-              {viewMode === "activity" ? "submissions in the past one year" : "contributions in the past one year"}
-            </span>
-          </div>
-          <div className="mb-2 flex gap-6 text-xs">
-            <div>
-              <span className="text-label-3 dark:text-dark-label-3">
-                Total active days:
-              </span>{" "}
-              <span className="font-medium text-label-2 dark:text-dark-label-2">
-                  {activeDays}
-                </span>
-            </div>
-          </div>
-        </>
-      )}
-
-      {viewMode === "activity" && problemStreaks && (
-        <div className="mb-4 flex gap-6 text-xs">
-          <div>Max streak: {problemStreaks.max} days</div>
-          <div>Current streak: {problemStreaks.current} days</div>
-        </div>
-      )}
-      {viewMode === "streak" && streaks && (
-        <div className="mb-4 flex gap-6 text-xs">
-          <div>Max streak: {streaks.max} days</div>
-          <div>Current streak: {streaks.current} days</div>
-        </div>
-      )}
 
       <div className="overflow-x-auto">
         <div className="flex gap-[3px]" style={{ minWidth: 700 }}>
@@ -497,12 +711,21 @@ function Heatmap({ data, viewMode, streaks, problemStreaks, years, selectedYear,
 
             data.forEach((e) => {
               const d = new Date(e.date)
-              const dow = d.getDay()
-              if (prevDate && d.getMonth() !== prevDate.getMonth()) {
-                // month boundary crossed -> commit current column with gap after it
-                columns.push(col)
-                gapAfter.push(true)
-                col = newCol()
+              // Use UTC methods: ISO date strings are UTC midnight, so getDay()
+              // would give the wrong weekday in negative-offset timezones.
+              const dow = d.getUTCDay()
+              if (prevDate && d.getUTCMonth() !== prevDate.getUTCMonth()) {
+                // Month boundary: if the col is empty it means the previous month
+                // ended exactly on Saturday (dow=6 already committed it). In that
+                // case just flip the last gapAfter from false → true instead of
+                // pushing a blank column, which would create double spacing.
+                if (col.some((x) => x.date !== "")) {
+                  columns.push(col)
+                  gapAfter.push(true)
+                  col = newCol()
+                } else {
+                  if (gapAfter.length > 0) gapAfter[gapAfter.length - 1] = true
+                }
               }
               col[dow] = e
               if (dow === 6) {
@@ -526,7 +749,7 @@ function Heatmap({ data, viewMode, streaks, problemStreaks, years, selectedYear,
                       <div
                         key={di}
                         className={cn(
-                          "h-3 w-3 rounded-sm transition-all duration-150 hover:ring-1 hover:ring-primary/50",
+                          "h-3 w-3 rounded-sm transition-colors duration-150",
                           getHeatColor(day.count)
                         )}
                         onMouseEnter={(e) => {
@@ -543,36 +766,32 @@ function Heatmap({ data, viewMode, streaks, problemStreaks, years, selectedYear,
                     )
                   })}
                 </div>
-                {gapAfter[wi] && <div className="w-[12px] flex-shrink-0" />}
+                {gapAfter[wi] && <div className="w-[6px] flex-shrink-0" />}
               </React.Fragment>
             ))
           })()}
         </div>
       </div>
-      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-        <span>Less</span>
-        <div className="flex items-center gap-1">
-          <div className="h-3 w-3 rounded-sm bg-secondary" />
-          <div className="h-3 w-3 rounded-sm bg-chart-3/25" />
-          <div className="h-3 w-3 rounded-sm bg-chart-3/50" />
-          <div className="h-3 w-3 rounded-sm bg-chart-3/75" />
-          <div className="h-3 w-3 rounded-sm bg-chart-3" />
-        </div>
-        <span>More</span>
-      </div>
-      {tooltip && (
-        <div
-          className="pointer-events-none fixed z-50 rounded-lg border border-border bg-popover px-3 py-2 text-xs shadow-lg"
-          style={{ left: tooltip.x - 40, top: tooltip.y - 50 }}
-        >
+      {
+        tooltip && (
+          <div
+            className="pointer-events-none fixed z-50 rounded-lg border border-border bg-popover px-3 py-2 text-xs shadow-lg text-center"
+            style={{ left: tooltip.x - 40, top: tooltip.y - 50 }}
+          >
             <span className="font-medium text-popover-foreground">
-            {tooltip.count}
-            {viewMode === "activity" ? " submissions" : " contributions"}
-          </span>
-          <br />
-          <span className="text-muted-foreground">{tooltip.date}</span>
-        </div>
-      )}
+              {tooltip.count}{" "}
+              {viewMode === "activity"
+                ? tooltip.count === 1 ? "Submission" : "Submissions"
+                : tooltip.count === 1 ? "Contribution" : "Contributions"}
+            </span>
+            <br />
+            <span className="text-muted-foreground">
+              {new Date(tooltip.date + "T00:00:00").toLocaleDateString("en-US", {
+                month: "short", day: "numeric", year: "numeric"
+              })}
+            </span>
+          </div>
+        )}
     </div>
   )
 }
@@ -584,15 +803,38 @@ interface RatingGraphProps {
 function RatingGraph({ data }: RatingGraphProps) {
   const indigo = "#818CF8"
 
+  // Graph needs oldest→newest so the area chart goes left-to-right chronologically
+  const ascending = useMemo(() =>
+    [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+    [data]
+  )
+
+  const [yMin, yMax] = useMemo(() => {
+    if (!ascending.length) return [0, 2000]
+    const ratings = ascending.map(d => d.rating)
+    const min = Math.min(...ratings)
+    const max = Math.max(...ratings)
+    const lower = Math.max(0, Math.floor(min / 100) * 100 - 100)
+    const upper = Math.ceil(max / 100) * 100 + 100
+    return [lower, upper]
+  }, [ascending])
+
+  const startLabel = ascending.length > 0
+    ? new Date(ascending[0].date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+    : ""
+  const endLabel = ascending.length > 0
+    ? new Date(ascending[ascending.length - 1].date).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+    : ""
+
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
+    <div className="flex h-full flex-col rounded-xl border border-border bg-card p-5">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">Rating Progress</h3>
       </div>
-      <div className="h-[250px] w-full">
+      <div className="min-h-0 flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
-            data={data}
+            data={ascending}
             margin={{ top: 5, right: 5, left: -20, bottom: 5 }}
           >
             <defs>
@@ -602,33 +844,33 @@ function RatingGraph({ data }: RatingGraphProps) {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis
-              dataKey="displayDate"
-              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-              axisLine={false}
-              tickLine={false}
-            />
+            <XAxis dataKey="date" hide />
             <YAxis
               tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
               axisLine={false}
               tickLine={false}
+              domain={[yMin, yMax]}
             />
             <Tooltip
-              contentStyle={{
-                backgroundColor: "var(--card)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                fontSize: 12,
-              }}
-              labelStyle={{ color: "var(--foreground)" }}
-              formatter={(value, name, props) => {
-                const idx = props.payloadIndex as number
-                const entry = data[idx]
-                return [`${value}`, `Rating`]
-              }}
-              labelFormatter={(label) => {
-                const entry = data.find((d) => d.displayDate === label)
-                return entry ? entry.contest : label
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null
+                const entry = payload[0].payload as RatingEntry
+                return (
+                  <div style={{
+                    backgroundColor: "var(--card)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    padding: "10px 14px",
+                    fontSize: 12,
+                    maxWidth: 240,
+                  }}>
+                    <p style={{ color: "var(--foreground)", fontWeight: 600, marginBottom: 4, lineHeight: 1.4 }}>
+                      {entry.contest}
+                    </p>
+                    <p style={{ color: "var(--muted-foreground)", marginBottom: 2 }}>{entry.displayDate ?? entry.date}</p>
+                    <p style={{ color: indigo, fontWeight: 700, fontSize: 14 }}>Rating: {entry.rating}</p>
+                  </div>
+                )
               }}
             />
             <Area
@@ -637,8 +879,8 @@ function RatingGraph({ data }: RatingGraphProps) {
               stroke={indigo}
               strokeWidth={2}
               fill="url(#ratingGradient)"
-              dot={{ r: 4, fill: indigo, stroke: "var(--card)", strokeWidth: 2 }}
-              activeDot={{ r: 6, fill: indigo }}
+              activeDot={{ r: 6, fill: indigo, fillOpacity: 1, stroke: "var(--background)", strokeWidth: 2 }}
+              dot={{ r: 4, fill: indigo, fillOpacity: 1, stroke: "var(--background)", strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -652,28 +894,23 @@ interface ContestHistoryTableProps {
 }
 
 function ContestHistoryTable({ contests }: ContestHistoryTableProps) {
-  const [showAll, setShowAll] = useState(false)
-  const displayed = showAll ? contests : contests.slice(0, 5)
-
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
-      <h3 className="mb-4 text-sm font-semibold text-foreground">Recent Contests</h3>
-      <div className="overflow-x-auto">
+    <div className="flex h-full flex-col rounded-xl border border-border bg-card p-5">
+      <h3 className="mb-4 flex-shrink-0 text-sm font-semibold text-foreground">Recent Contests</h3>
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <table className="w-full text-left text-sm">
-          <thead>
+          <thead className="sticky top-0 bg-card">
             <tr className="border-b border-border text-xs font-medium uppercase tracking-widest text-muted-foreground">
               <th className="pb-3 pr-4">Contest</th>
-              <th className="pb-3 pr-4">Platform</th>
               <th className="pb-3 pr-4 text-right">Rank</th>
               <th className="pb-3 pr-4 text-right">Rating</th>
               <th className="pb-3 text-right">Date</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {displayed.map((c, i) => (
+            {contests.map((c, i) => (
               <tr key={i} className="group transition-colors hover:bg-secondary/50">
                 <td className="py-3 pr-4 font-medium text-foreground">{c.name}</td>
-                <td className="py-3 pr-4 text-muted-foreground">{c.platform}</td>
                 <td className="py-3 pr-4 text-right font-mono text-foreground">#{c.rank}</td>
                 <td className="py-3 pr-4 text-right">
                   <span className={cn(
@@ -685,27 +922,17 @@ function ContestHistoryTable({ contests }: ContestHistoryTableProps) {
                     ) : (
                       <ArrowDownRight className="h-3 w-3" />
                     )}
-                    {c.change}
+                    {c.change.replace(/^[+-]/, "")}
                   </span>
                 </td>
-                <td className="py-3 text-right text-muted-foreground">{c.date}</td>
+                <td className="py-3 text-right text-muted-foreground whitespace-nowrap">
+                  {c.displayDate ?? new Date(c.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {contests.length > 5 && (
-        <button
-          onClick={() => setShowAll(!showAll)}
-          className="mt-3 flex w-full items-center justify-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          {showAll ? (
-            <>Show Less <ChevronUp className="h-3.5 w-3.5" /></>
-          ) : (
-            <>Show All ({contests.length}) <ChevronDown className="h-3.5 w-3.5" /></>
-          )}
-        </button>
-      )}
     </div>
   )
 }
@@ -715,86 +942,74 @@ function ContestHistoryTable({ contests }: ContestHistoryTableProps) {
 // -----------------------------------------------------------------------------
 
 export function CodingStatsSection() {
-  const cf = useCodeforces("agrimgarg")
-  const lc = useLeetCode("agrimgarg")
-  const gh = useGitHub("agrimgarg08")
+  const cf = useCodeforces(siteConfig.handles.codeforces)
+  const lc = useLeetCode(siteConfig.handles.leetcode)
+  const gh = useGitHub(siteConfig.handles.github)
 
-  const [heatmapMode, setHeatmapMode] = useState<"activity" | "streak">
-    ("activity")
-  const [ratingPlatform, setRatingPlatform] = useState<"LeetCode" | "Codeforces">
-    ("LeetCode")
+  // ── Section 1: Heatmap mode ──
+  // "Problem Solving" = merged LC + CF submissions | "Contributions" = GitHub
+  const [heatmapMode, setHeatmapMode] = useState<"Problem Solving" | "Contributions">("Problem Solving")
 
-  // year selection for calendar
+  // ── Section 2: Contest platform (LeetCode | Codeforces) ──
+  // Controls BOTH the rating graph and the contest table together
+  const [contestPlatform, setContestPlatform] = useState<"LeetCode" | "Codeforces">("LeetCode")
+
+  // year selection for heatmap calendar
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
 
-  // compute problem-only heatmap (leetcode + codeforces)
-  const problemHeatmap = useMemo(() => {
-    return mergeHeatmaps({ LeetCode: lc.heatmap, Codeforces: cf.heatmap })
-  }, [lc.heatmap, cf.heatmap])
+  // ── Heatmap: raw data depends on mode ──
+  // Problem Solving = merge LC + CF; Contributions = GitHub
+  const lcCfMerged = useMemo(() => mergeHeatmaps({ LeetCode: lc.heatmap, Codeforces: cf.heatmap, GitHub: [] }), [lc.heatmap, cf.heatmap])
+  const rawHeatmap = useMemo((): HeatmapEntry[] => {
+    return heatmapMode === "Problem Solving" ? lcCfMerged : gh.heatmap
+  }, [heatmapMode, lcCfMerged, gh.heatmap])
 
-  const mergedHeatmap = useMemo(() => {
-    if (heatmapMode === "activity") {
-      // only show problem activity (exclude GitHub)
-      return problemHeatmap
-    }
-    // for streak mode show GitHub contributions
-    return gh.heatmap
-  }, [heatmapMode, problemHeatmap, gh.heatmap])
-
-  // list of years available for dropdown (down to 2022)
+  // ── Years available in the heatmap dropdown ──
   const availableYears = useMemo(() => {
-    const set = new Set<number>(mergedHeatmap.map(e => new Date(e.date).getFullYear()))
-    const curr = new Date().getFullYear()
-    for (let y = curr; y >= 2022; y--) set.add(y)
+    const set = new Set<number>(rawHeatmap.map(e => new Date(e.date).getUTCFullYear()))
+    set.add(new Date().getFullYear())
     return Array.from(set).sort((a, b) => b - a)
-  }, [mergedHeatmap])
+  }, [rawHeatmap])
 
-  // filter the merged heatmap to only show entries from selectedYear and fill missing days
-  // ensure selectedYear is valid when availableYears update
   useEffect(() => {
     if (availableYears.length && !availableYears.includes(selectedYear)) {
       setSelectedYear(availableYears[0])
     }
   }, [availableYears, selectedYear])
 
+  // ── Year-filtered heatmap (every day filled so grid is always complete) ──
   const yearHeatmap = useMemo(() => {
     const map: Record<string, number> = {}
-    mergedHeatmap.forEach((e) => {
-      if (new Date(e.date).getFullYear() === selectedYear) {
+    rawHeatmap.forEach((e) => {
+      // ISO date strings are UTC midnight — use getUTCFullYear to avoid timezone shift
+      if (new Date(e.date).getUTCFullYear() === selectedYear)
         map[e.date] = (map[e.date] || 0) + e.count
-      }
     })
     const result: HeatmapEntry[] = []
     for (let d = new Date(selectedYear, 0, 1); d.getFullYear() === selectedYear; d.setDate(d.getDate() + 1)) {
-      const iso = d.toISOString().slice(0, 10)
+      // Build ISO string from local parts — avoids toISOString() UTC conversion
+      // that shifts Jan 1 back to Dec 31 in UTC+5:30 and similar timezones
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
       result.push({ date: iso, count: map[iso] || 0 })
     }
     return result
-  }, [mergedHeatmap, selectedYear])
+  }, [rawHeatmap, selectedYear])
 
-  const streaks = useMemo(() => {
-    if (heatmapMode === "streak") {
-      return calcStreaks(gh.heatmap)
-    }
-    return undefined
-  }, [heatmapMode, gh.heatmap])
+  const yearStreaks = useMemo(() => calcStreaks(yearHeatmap), [yearHeatmap])
+  const ghStreaks = useMemo(() => calcStreaks(gh.heatmap), [gh.heatmap])
+  const heatmapViewMode = heatmapMode === "Contributions" ? "streak" : "activity"
 
-  const problemStreaks = useMemo(() => {
-    return calcStreaks(problemHeatmap)
-  }, [problemHeatmap])
-
-  // streaks specific to currently selected year (activity mode)
-  const yearStreaks = useMemo(() => {
-    return calcStreaks(yearHeatmap)
-  }, [yearHeatmap])
-
+  // ── Contest section: rating graph (ascending) ──
   const ratingData = useMemo(() => {
-    return ratingPlatform === "LeetCode" ? lc.ratingHistory : cf.ratingHistory
-  }, [ratingPlatform, lc.ratingHistory, cf.ratingHistory])
+    const raw = contestPlatform === "LeetCode" ? lc.ratingHistory : cf.ratingHistory
+    return [...raw].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  }, [contestPlatform, lc.ratingHistory, cf.ratingHistory])
 
+  // ── Contest section: contest table (descending: newest first) ──
   const contestData = useMemo(() => {
-    return ratingPlatform === "LeetCode" ? lc.contests : cf.contests
-  }, [ratingPlatform, lc.contests, cf.contests])
+    const raw = contestPlatform === "LeetCode" ? lc.contests : cf.contests
+    return [...raw].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  }, [contestPlatform, lc.contests, cf.contests])
 
   return (
     <section id="coding-stats" className="px-6 py-24">
@@ -804,95 +1019,122 @@ export function CodingStatsSection() {
           subtitle="Analytics dashboard across competitive programming platforms"
         />
 
-        {/* Platform cards */}
-        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {platformList.map((p) => (
-            <a
-              key={p.name}
-              href={p.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group flex flex-col gap-3 rounded-xl border border-border bg-card p-4 transition-all duration-300 hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-foreground">
-                  {p.name}
-                </span>
-                <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-              </div>
-              <div className="text-2xl font-bold text-foreground font-mono">
+        {/* Platform summary cards — 3-col full-width */}
+        <div className="mb-8 grid grid-cols-3 gap-4">
+          {platformList.map((p) => {
+            const lcRating = lc.ratingHistory.slice(-1)[0]?.rating || 0
+            const cfRating = cf.ratingHistory.slice(-1)[0]?.rating || 0
+            const rank = p.name === "LeetCode"
+              ? getLeetCodeRank(lcRating)
+              : p.name === "Codeforces"
+                ? getCodeforcesRank(cfRating)
+                : null
+            return (
+              <a
+                key={p.name}
+                href={p.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex flex-col gap-3 rounded-xl border border-border bg-card p-5 transition-all duration-300 hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5"
+              >
+                {/* Header row: name + rank badge + external link */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-foreground">{p.name}</span>
+                    {rank && (
+                      <span
+                        className="rounded-md px-2 py-0.5 text-xs font-semibold"
+                        style={{
+                          backgroundColor: `${rank.color}22`,
+                          color: rank.color,
+                          border: `1px solid ${rank.color}44`,
+                        }}
+                      >
+                        {rank.label}
+                      </span>
+                    )}
+                  </div>
+                  <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                </div>
+
+                {/* Stats row */}
                 {p.name === "GitHub" ? (
-                  <AnimatedCounter target={gh.heatmap.reduce((a,b)=>a+b.count,0)} suffix="" />
-                ) : p.name === "LeetCode" ? (
-                  <AnimatedCounter target={lc.ratingHistory.slice(-1)[0]?.rating || 0} suffix="" />
+                  <div className="flex items-stretch gap-4">
+                    <div className="flex-1">
+                      <div className="text-2xl font-bold font-mono text-foreground">
+                        <AnimatedCounter target={gh.totalContributions} suffix="" />
+                      </div>
+                      <span className="text-xs text-muted-foreground">contributions</span>
+                    </div>
+                    <div className="w-px bg-border self-stretch" />
+                    <div className="flex-1">
+                      <div className="text-2xl font-bold font-mono text-foreground">
+                        <AnimatedCounter target={gh.totalRepos} suffix="" />
+                      </div>
+                      <span className="text-xs text-muted-foreground">repos</span>
+                    </div>
+                  </div>
                 ) : (
-                  <AnimatedCounter target={cf.ratingHistory.slice(-1)[0]?.rating || 0} suffix="" />
+                  <div className="flex items-stretch gap-4">
+                    <div className="flex-1">
+                      <div className="text-2xl font-bold font-mono text-foreground">
+                        <AnimatedCounter target={p.name === "LeetCode" ? lcRating : cfRating} suffix="" />
+                      </div>
+                      <span className="text-xs text-muted-foreground">rating</span>
+                    </div>
+                    <div className="w-px bg-border self-stretch" />
+                    <div className="flex-1">
+                      <div className="text-2xl font-bold font-mono text-foreground">
+                        <AnimatedCounter target={p.name === "LeetCode" ? lc.totalSolved : cf.totalSolved} suffix="" />
+                      </div>
+                      <span className="text-xs text-muted-foreground">solved</span>
+                    </div>
+                  </div>
                 )}
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">
-                  {p.name === "GitHub" ? "contributions" : "rating"}
-                </span>
-                <span
-                  className="rounded-md px-2 py-0.5 font-medium"
-                  style={{
-                    backgroundColor: `${p.color}20`,
-                    color: p.color,
-                  }}
-                >
-                  {/* placeholder rank */}
-                  -
-                </span>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {p.name === "GitHub" ? `repos` : `rating`}
-              </div>
-            </a>
+              </a>
+            )
+          })}
+        </div>
+
+        {/* ── Section 1: Heatmap ── */}
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {(["Problem Solving", "Contributions"] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => setHeatmapMode(mode)}
+              className={cn(
+                "rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
+                heatmapMode === mode
+                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              )}
+            >
+              {mode}
+            </button>
           ))}
         </div>
 
-        {/* heatmap controls */}
-        <div className="mb-4 flex gap-4">
-          <button
-            onClick={() => setHeatmapMode("activity")}
-            className={cn(
-              "px-3 py-1 rounded-md text-sm",
-              heatmapMode === "activity" ? "bg-primary text-primary-foreground" : "bg-secondary"
-            )}
-          >
-            Problem Activity
-          </button>
-          <button
-            onClick={() => setHeatmapMode("streak")}
-            className={cn(
-              "px-3 py-1 rounded-md text-sm",
-              heatmapMode === "streak" ? "bg-primary text-primary-foreground" : "bg-secondary"
-            )}
-          >
-            Streaks / Contributions
-          </button>
-        </div>
-
-
         <Heatmap
           data={yearHeatmap}
-          viewMode={heatmapMode}
-          streaks={streaks}
-          problemStreaks={heatmapMode === "activity" ? yearStreaks : problemStreaks}
+          allTimeData={rawHeatmap}
+          viewMode={heatmapViewMode}
+          streaks={heatmapMode === "Contributions" ? ghStreaks : undefined}
           years={availableYears}
           selectedYear={selectedYear}
           onYearChange={setSelectedYear}
         />
 
-        {/* rating selector */}
-        <div className="mt-8 mb-4 flex gap-4">
+        {/* ── Section 2: Rating graph + Contest table ── */}
+        <div className="mt-10 mb-4 flex flex-wrap items-center gap-2">
           {(["LeetCode", "Codeforces"] as const).map((plat) => (
             <button
               key={plat}
-              onClick={() => setRatingPlatform(plat)}
+              onClick={() => setContestPlatform(plat)}
               className={cn(
-                "px-3 py-1 rounded-md text-sm",
-                ratingPlatform === plat ? "bg-primary text-primary-foreground" : "bg-secondary"
+                "rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
+                contestPlatform === plat
+                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
               )}
             >
               {plat}
@@ -900,11 +1142,11 @@ export function CodingStatsSection() {
           ))}
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-2">
+        <div className="grid h-[420px] gap-8 lg:grid-cols-2">
           <RatingGraph data={ratingData} />
           <ContestHistoryTable contests={contestData} />
         </div>
       </div>
-    </section>
+    </section >
   )
 }

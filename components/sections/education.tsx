@@ -16,18 +16,18 @@ const education: EducationItem[] = [
   {
     university: "Netaji Subhas University of Technology (Main Campus), Dwarka, New Delhi",
     degree: "B.Tech in Computer Science and Engineering",
-    gpa: "",
+    gpa: "CGPA: 9.00",
     duration: "2025 - 2029",
     coursework: ["Data Structures", "Algorithms", "Operating Systems", "Database Systems", "Software Engineering"],
-    awards: [],
+    awards: ["Member of the DSA Department, GDG On Campus"],
   },
   {
     university: "Venkateshwar International School, Sector-10, Dwarka, New Delhi",
     degree: "Senior Secondary (PCM + CS)",
-    gpa: "",
+    gpa: "AISSE: 97.0%\nAISSCE: 96.8%",
     duration: "2011 - 2025",
     coursework: ["Physics", "Chemistry", "Mathematics", "Computer Science"],
-    awards: [],
+    awards: ["Computer Wizard of the Batch of 2025"],
   },
 ]
 
@@ -37,7 +37,6 @@ export function EducationSection() {
       <div className="mx-auto max-w-4xl">
         <SectionHeading
           title="Education"
-          subtitle="Academic background and achievements"
         />
 
         <div className="space-y-6">
@@ -58,7 +57,13 @@ export function EducationSection() {
                 </div>
                 <div className="flex flex-col items-end gap-1 text-sm text-muted-foreground">
                   <span>{edu.duration}</span>
-                  {edu.gpa && <span className="font-mono text-foreground">{edu.gpa}</span>}
+                  {edu.gpa && (
+                    <div className="flex flex-col items-end text-sm font-mono text-foreground">
+                      {edu.gpa.split("\n").map((line, i) => (
+                        <span key={i}>{line}</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 

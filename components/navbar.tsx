@@ -14,7 +14,6 @@ const navItems = [
   { label: "Achievements", href: "#achievements" },
   { label: "Coding Stats", href: "#coding-stats" },
   { label: "Projects", href: "#projects" },
-  { label: "Contact", href: "#contact" },
 ]
 
 export function Navbar() {

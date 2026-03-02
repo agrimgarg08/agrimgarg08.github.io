@@ -1,16 +1,76 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { SectionHeading, AnimatedCounter } from "@/components/ui-helpers"
 import { Code2, Trophy, GitBranch, Zap } from "lucide-react"
+import { siteConfig } from "@/config/site"
 
-const stats = [
-  { icon: Code2, label: "Problems Solved", value: 800, suffix: "+" },
-  { icon: Trophy, label: "Contests", value: 150, suffix: "+" },
-  { icon: GitBranch, label: "Projects Built", value: 15, suffix: "+" },
-  { icon: Zap, label: "Hackathon Wins", value: 5, suffix: "" },
-]
+// Reads the cached solved/contest totals written by the coding-stats hooks.
+// Falls back to 0 if the cache isn't populated yet — the AnimatedCounter will
+// update once the coding-stats section hydrates the cache.
+function useCachedStats() {
+  const [totalSolved, setTotalSolved] = useState(0)
+  const [totalContests, setTotalContests] = useState(0)
+
+  useEffect(() => {
+    function read() {
+      let solved = 0
+      let contests = 0
+
+      // LeetCode cache
+      try {
+        const lc = localStorage.getItem(`leetcode_data_${siteConfig.handles.leetcode}`)
+        if (lc) {
+          const parsed = JSON.parse(lc)
+          solved += parsed.totalSolved || 0
+          contests += (parsed.contests?.length || 0)
+        }
+      } catch { }
+
+      // Codeforces cache
+      try {
+        const cf = localStorage.getItem(`codeforces_data_${siteConfig.handles.codeforces}`)
+        if (cf) {
+          const parsed = JSON.parse(cf)
+          solved += parsed.totalSolved || 0
+          contests += (parsed.contests?.length || 0)
+        }
+      } catch { }
+
+      setTotalSolved(solved)
+      setTotalContests(contests)
+    }
+
+    read()
+
+    // Poll every 2s for the first 30s in case coding-stats hasn't fetched yet
+    let polls = 0
+    const interval = setInterval(() => {
+      read()
+      if (++polls >= 15) clearInterval(interval)
+    }, 2000)
+
+    // Also re-read on storage events (cross-tab)
+    window.addEventListener("storage", read)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener("storage", read)
+    }
+  }, [])
+
+  return { totalSolved, totalContests }
+}
 
 export function AboutSection() {
+  const { totalSolved, totalContests } = useCachedStats()
+
+  const stats = [
+    { icon: Code2, label: "Problems Solved", value: totalSolved },
+    { icon: Trophy, label: "Contests", value: totalContests },
+    { icon: GitBranch, label: "Projects Built", value: 15 },
+    { icon: Zap, label: "Hackathon Wins", value: 5 },
+  ]
+
   return (
     <section id="about" className="px-6 py-24">
       <div className="mx-auto max-w-5xl">
