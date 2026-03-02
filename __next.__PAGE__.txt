@@ -1,0 +1,17 @@
+1:"$Sreact.fragment"
+2:I[76092,["/_next/static/chunks/ee0e8cd1b0444044.js","/_next/static/chunks/9438905254c0bfe1.js"],"CustomCursor"]
+3:I[63780,["/_next/static/chunks/ee0e8cd1b0444044.js","/_next/static/chunks/9438905254c0bfe1.js"],"Navbar"]
+4:I[31287,["/_next/static/chunks/ee0e8cd1b0444044.js","/_next/static/chunks/9438905254c0bfe1.js"],"HeroSection"]
+5:I[48032,["/_next/static/chunks/ee0e8cd1b0444044.js","/_next/static/chunks/9438905254c0bfe1.js"],"AboutSection"]
+6:I[83099,["/_next/static/chunks/ee0e8cd1b0444044.js","/_next/static/chunks/9438905254c0bfe1.js"],"TechStackSection"]
+7:I[73524,["/_next/static/chunks/ee0e8cd1b0444044.js","/_next/static/chunks/9438905254c0bfe1.js"],"ResumeSection"]
+8:I[23795,["/_next/static/chunks/ee0e8cd1b0444044.js","/_next/static/chunks/9438905254c0bfe1.js"],"EducationSection"]
+9:I[6986,["/_next/static/chunks/ee0e8cd1b0444044.js","/_next/static/chunks/9438905254c0bfe1.js"],"AchievementsSection"]
+a:I[58960,["/_next/static/chunks/ee0e8cd1b0444044.js","/_next/static/chunks/9438905254c0bfe1.js"],"CodingStatsSection"]
+b:I[66844,["/_next/static/chunks/ee0e8cd1b0444044.js","/_next/static/chunks/9438905254c0bfe1.js"],"ProjectsSection"]
+c:I[57841,["/_next/static/chunks/ee0e8cd1b0444044.js","/_next/static/chunks/9438905254c0bfe1.js"],"ContactSection"]
+d:I[76841,["/_next/static/chunks/ee0e8cd1b0444044.js","/_next/static/chunks/9438905254c0bfe1.js"],"Footer"]
+e:I[16839,["/_next/static/chunks/19c707fd0667ec28.js"],"OutletBoundary"]
+f:"$Sreact.suspense"
+0:{"buildId":"betagZKu2y0O76lQrdOUG","rsc":["$","$1","c",{"children":[[["$","$L2",null,{}],["$","$L3",null,{}],["$","main",null,{"children":[["$","$L4",null,{}],["$","$L5",null,{}],["$","$L6",null,{}],["$","$L7",null,{}],["$","$L8",null,{}],["$","$L9",null,{}],["$","$La",null,{}],["$","$Lb",null,{}],["$","$Lc",null,{}]]}],["$","$Ld",null,{}]],[["$","script","script-0",{"src":"/_next/static/chunks/9438905254c0bfe1.js","async":true}]],["$","$Le",null,{"children":["$","$f",null,{"name":"Next.MetadataOutlet","children":"$@10"}]}]]}],"loading":null,"isPartial":false}
+10:null
