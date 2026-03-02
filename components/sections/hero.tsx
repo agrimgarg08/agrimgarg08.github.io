@@ -67,7 +67,7 @@ export function HeroSection() {
             </div>
 
             <h1 className="mb-6 text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl animate-fade-up text-balance" style={{ animationDelay: "0.1s" }}>
-              Alex Chen
+              Agrim Garg
             </h1>
 
             <p className="mb-6 max-w-xl text-lg leading-relaxed text-muted-foreground animate-fade-up text-pretty" style={{ animationDelay: "0.2s" }}>
@@ -116,7 +116,7 @@ export function HeroSection() {
                     <span className="text-muted-foreground">{"{"}</span>{"\n"}
                     {"  "}<span className="text-chart-3">{"name"}</span>
                     <span className="text-muted-foreground">{":"}</span>{" "}
-                    <span className="text-chart-4">{'"Alex Chen"'}</span>
+                    <span className="text-chart-4">{"\"Agrim Garg\""}</span>
                     <span className="text-muted-foreground">{","}</span>{"\n"}
                     {"  "}<span className="text-chart-3">{"role"}</span>
                     <span className="text-muted-foreground">{":"}</span>{" "}

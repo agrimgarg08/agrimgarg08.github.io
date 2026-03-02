@@ -14,20 +14,20 @@ interface EducationItem {
 
 const education: EducationItem[] = [
   {
-    university: "Stanford University",
-    degree: "M.S. Computer Science",
-    gpa: "3.92 / 4.0",
-    duration: "2025 - 2027 (Expected)",
-    coursework: ["Advanced Algorithms", "Distributed Systems", "Machine Learning", "Computer Networks"],
-    awards: ["Graduate Fellowship", "Dean's List"],
+    university: "Netaji Subhas University of Technology (Main Campus), Dwarka, New Delhi",
+    degree: "B.Tech in Computer Science and Engineering",
+    gpa: "",
+    duration: "2025 - 2029",
+    coursework: ["Data Structures", "Algorithms", "Operating Systems", "Database Systems", "Software Engineering"],
+    awards: [],
   },
   {
-    university: "State University",
-    degree: "B.S. Computer Science",
-    gpa: "3.88 / 4.0",
-    duration: "2021 - 2025",
-    coursework: ["Data Structures", "Operating Systems", "Database Systems", "Computer Architecture", "Software Engineering"],
-    awards: ["Summa Cum Laude", "CS Department Award", "Presidential Scholarship"],
+    university: "Venkateshwar International School, Sector-10, Dwarka, New Delhi",
+    degree: "Senior Secondary (PCM + CS)",
+    gpa: "",
+    duration: "2011 - 2025",
+    coursework: ["Physics", "Chemistry", "Mathematics", "Computer Science"],
+    awards: [],
   },
 ]
 
@@ -58,30 +58,34 @@ export function EducationSection() {
                 </div>
                 <div className="flex flex-col items-end gap-1 text-sm text-muted-foreground">
                   <span>{edu.duration}</span>
-                  <span className="font-mono text-foreground">{edu.gpa}</span>
+                  {edu.gpa && <span className="font-mono text-foreground">{edu.gpa}</span>}
                 </div>
               </div>
 
-              <div className="mb-4">
-                <h4 className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Relevant Coursework</h4>
-                <div className="flex flex-wrap gap-1.5">
-                  {edu.coursework.map((c) => (
-                    <span key={c} className="rounded-md bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground">{c}</span>
-                  ))}
+              {edu.coursework.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Relevant Coursework</h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {edu.coursework.map((c) => (
+                      <span key={c} className="rounded-md bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground">{c}</span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div>
-                <h4 className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Awards</h4>
-                <div className="flex flex-wrap gap-3">
-                  {edu.awards.map((a) => (
-                    <div key={a} className="flex items-center gap-1.5 text-sm text-foreground">
-                      <Award className="h-3.5 w-3.5 text-chart-4" />
-                      {a}
-                    </div>
-                  ))}
+              {edu.awards.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Awards</h4>
+                  <div className="flex flex-wrap gap-3">
+                    {edu.awards.map((a) => (
+                      <div key={a} className="flex items-center gap-1.5 text-sm text-foreground">
+                        <Award className="h-3.5 w-3.5 text-chart-4" />
+                        {a}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           ))}
         </div>

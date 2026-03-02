@@ -1,6 +1,6 @@
 "use client"
 
-import { Github, Linkedin, Twitter } from "lucide-react"
+import { Github, Linkedin } from "lucide-react"
 
 export function Footer() {
   return (
@@ -11,9 +11,8 @@ export function Footer() {
         </p>
         <div className="flex items-center gap-4">
           {[
-            { icon: Github, href: "https://github.com/alexchen", label: "GitHub" },
-            { icon: Linkedin, href: "https://linkedin.com/in/alexchen", label: "LinkedIn" },
-            { icon: Twitter, href: "https://twitter.com/alexchen", label: "Twitter" },
+            { icon: Github, href: "https://github.com/agrimgarg08", label: "GitHub" },
+            { icon: Linkedin, href: "https://linkedin.com/in/agrim-garg", label: "LinkedIn" },
           ].map((s) => (
             <a
               key={s.label}

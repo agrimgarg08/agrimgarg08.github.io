@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { SectionHeading } from "@/components/ui-helpers"
-import { Mail, MapPin, Send, Github, Linkedin, Twitter, CheckCircle2 } from "lucide-react"
+import { Mail, MapPin, Send, Github, Linkedin, CheckCircle2, ExternalLink } from "lucide-react"
 
 export function ContactSection() {
   const [submitted, setSubmitted] = useState(false)
@@ -94,7 +94,7 @@ export function ContactSection() {
                 </div>
                 <div>
                   <h4 className="text-sm font-semibold text-foreground">Email</h4>
-                  <a href="mailto:alex@alexchen.dev" className="text-sm text-muted-foreground transition-colors hover:text-primary">alex@alexchen.dev</a>
+                  <a href="mailto:agrimgarg247@gmail.com" className="text-sm text-muted-foreground transition-colors hover:text-primary">agrimgarg247@gmail.com</a>
                 </div>
               </div>
               <div className="flex items-start gap-4">
@@ -103,7 +103,7 @@ export function ContactSection() {
                 </div>
                 <div>
                   <h4 className="text-sm font-semibold text-foreground">Location</h4>
-                  <p className="text-sm text-muted-foreground">San Francisco, CA</p>
+                  <p className="text-sm text-muted-foreground">New Delhi, India</p>
                 </div>
               </div>
             </div>
@@ -113,9 +113,9 @@ export function ContactSection() {
               <h4 className="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Connect</h4>
               <div className="flex gap-3">
                 {[
-                  { icon: Github, label: "GitHub", href: "https://github.com/alexchen" },
-                  { icon: Linkedin, label: "LinkedIn", href: "https://linkedin.com/in/alexchen" },
-                  { icon: Twitter, label: "Twitter", href: "https://twitter.com/alexchen" },
+                  { icon: Github, label: "GitHub", href: "https://github.com/agrimgarg08" },
+                  { icon: Linkedin, label: "LinkedIn", href: "https://linkedin.com/in/agrim-garg" },
+                  { icon: ExternalLink, label: "Codolio", href: "https://codolio.com/profile/agrimgarg" },
                 ].map((social) => (
                   <a
                     key={social.label}

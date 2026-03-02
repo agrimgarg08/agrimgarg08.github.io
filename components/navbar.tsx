@@ -69,7 +69,7 @@ export function Navbar() {
           onClick={(e) => { e.preventDefault(); handleNavClick("#home") }}
           className="text-lg font-semibold tracking-tight text-foreground"
         >
-          {"AC"}
+          {"AG"}
         </a>
 
         {/* Desktop nav */}

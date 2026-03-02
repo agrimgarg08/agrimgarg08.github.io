@@ -7,7 +7,7 @@ const _inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const _geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
 export const metadata: Metadata = {
-  title: 'Alex Chen | Competitive Programmer & Full Stack Developer',
+  title: 'Agrim Garg | Competitive Programmer & Full Stack Developer',
   description: 'Competitive Programmer & Full Stack Developer focused on building scalable systems and solving complex problems. 800+ LeetCode problems solved, 1850 Codeforces rating.',
   keywords: ['developer', 'portfolio', 'competitive programming', 'full stack', 'software engineer'],
 }

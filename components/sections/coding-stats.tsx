@@ -32,7 +32,7 @@ const platforms = [
     rank: "Knight",
     problems: 823,
     badges: 15,
-    url: "https://leetcode.com/u/alexchen",
+    url: "https://leetcode.com/u/agrimgarg",
     color: "#FFA116",
   },
   {
@@ -41,7 +41,7 @@ const platforms = [
     rank: "Expert",
     problems: 620,
     badges: 8,
-    url: "https://codeforces.com/profile/alexchen",
+    url: "https://codeforces.com/profile/agrimgarg",
     color: "#1F8ACB",
   },
   {
@@ -50,7 +50,7 @@ const platforms = [
     rank: "3 Star",
     problems: 340,
     badges: 5,
-    url: "https://codechef.com/users/alexchen",
+    url: "https://codechef.com/users/agrimgarg08",
     color: "#5B4638",
   },
   {
@@ -59,7 +59,7 @@ const platforms = [
     rank: "Gold",
     problems: 180,
     badges: 12,
-    url: "https://hackerrank.com/alexchen",
+    url: "https://hackerrank.com/agrimgarg",
     color: "#00EA64",
   },
   {
@@ -68,7 +68,7 @@ const platforms = [
     rank: "Active",
     problems: 1200,
     badges: 6,
-    url: "https://github.com/alexchen",
+    url: "https://github.com/agrimgarg08",
     color: "#8B5CF6",
   },
 ]
