@@ -8,6 +8,8 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       # This is a user site (username.github.io), so REPO_NAME is empty
       REPO_NAME: ''
