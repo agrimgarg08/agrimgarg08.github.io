@@ -13,50 +13,16 @@ interface Experience {
 
 const experiences: Experience[] = [
   {
-    role: "Software Engineer Intern",
-    organization: "Meta",
-    duration: "May 2025 - Aug 2025",
+    role: "Placeholder Role",
+    organization: "Placeholder Company",
+    duration: "Placeholder Duration",
     points: [
-      "Built and shipped a high-performance data pipeline processing 2M+ events/day",
-      "Reduced API latency by 40% through query optimization and caching strategies",
-      "Collaborated with cross-functional teams to deliver features for 10M+ users",
-      "Implemented comprehensive unit and integration tests with 95% coverage",
+      "Placeholder Duty 1",
+      "Placeholder Duty 2",
+      "Placeholder Duty 3",
+      "Placeholder Duty 4",
     ],
-    tech: ["React", "Python", "GraphQL", "MySQL"],
-  },
-  {
-    role: "Full Stack Developer",
-    organization: "StartupX",
-    duration: "Jan 2024 - Apr 2025",
-    points: [
-      "Architected a microservices platform serving 50K+ monthly active users",
-      "Led migration from monolith to microservices, reducing deployment time by 70%",
-      "Designed and implemented real-time collaboration features using WebSockets",
-      "Mentored 3 junior developers and established code review processes",
-    ],
-    tech: ["Next.js", "Node.js", "PostgreSQL", "Docker", "AWS"],
-  },
-  {
-    role: "Research Assistant",
-    organization: "CS Department, State University",
-    duration: "Sep 2023 - Dec 2023",
-    points: [
-      "Developed ML models for natural language processing with 92% accuracy",
-      "Published research paper on efficient transformer architectures",
-      "Processed and analyzed datasets of 1M+ records using Python and Pandas",
-    ],
-    tech: ["Python", "PyTorch", "Pandas", "NLP"],
-  },
-  {
-    role: "Open Source Contributor",
-    organization: "Various Projects",
-    duration: "2022 - Present",
-    points: [
-      "Contributed to 10+ open source projects including major React libraries",
-      "Fixed critical bugs and added features adopted by 5K+ developers",
-      "Maintained personal libraries with 500+ GitHub stars",
-    ],
-    tech: ["TypeScript", "React", "Go", "Rust"],
+    tech: ["Placeholder Tech 1", "Placeholder Tech 2", "Placeholder Tech 3", "Placeholder Tech 4"],
   },
 ]
 

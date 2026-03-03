@@ -5,6 +5,7 @@ import { ArrowDown, ExternalLink } from "lucide-react"
 
 const roles = [
   "Data Structures & Algorithms",
+  "System Design",
   "Problem Solving",
   "Logical Reasoning",
   "Cyber Security",
@@ -57,7 +58,7 @@ export function HeroSection() {
       {/* Subtle radial glow */}
       <div className="pointer-events-none absolute top-1/4 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-[120px]" />
 
-      <div className="relative mx-auto max-w-7xl w-full">
+      <div className="relative mx-auto max-w-6xl w-full">
         <div className="flex flex-col items-center gap-12 lg:flex-row lg:items-center lg:justify-between">
           {/* Left content */}
           <div className="flex-1 text-center lg:text-left">
@@ -69,10 +70,6 @@ export function HeroSection() {
             <h1 className="mb-6 text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl animate-fade-up text-balance" style={{ animationDelay: "0.1s" }}>
               Agrim Garg
             </h1>
-
-            <p className="mb-6 max-w-xl text-lg leading-relaxed text-muted-foreground animate-fade-up text-pretty" style={{ animationDelay: "0.2s" }}>
-              Competitive Programmer & Full Stack Developer focused on building scalable systems and solving complex problems.
-            </p>
 
             {/* Typing animation */}
             <div className="mb-8 flex items-center justify-center gap-2 text-sm text-muted-foreground lg:justify-start animate-fade-up" style={{ animationDelay: "0.3s" }}>
@@ -120,19 +117,19 @@ export function HeroSection() {
                     <span className="text-muted-foreground">{","}</span>{"\n"}
                     {"  "}<span className="text-chart-3">{"role"}</span>
                     <span className="text-muted-foreground">{":"}</span>{" "}
-                    <span className="text-chart-4">{'"Full Stack Dev"'}</span>
+                    <span className="text-chart-4">{'"Student"'}</span>
                     <span className="text-muted-foreground">{","}</span>{"\n"}
-                    {"  "}<span className="text-chart-3">{"problems"}</span>
+                    {"  "}<span className="text-chart-3">{"hobbies"}</span>
                     <span className="text-muted-foreground">{":"}</span>{" "}
-                    <span className="text-accent">{"800"}</span>
+                    <span className="text-accent">{"music, minecraft, cycling"}</span>
                     <span className="text-muted-foreground">{","}</span>{"\n"}
-                    {"  "}<span className="text-chart-3">{"rating"}</span>
+                    {"  "}<span className="text-chart-3">{"fav show"}</span>
                     <span className="text-muted-foreground">{":"}</span>{" "}
-                    <span className="text-accent">{"1850"}</span>
+                    <span className="text-accent">{"brooklyn nine-nine"}</span>
                     <span className="text-muted-foreground">{","}</span>{"\n"}
                     {"  "}<span className="text-chart-3">{"passion"}</span>
                     <span className="text-muted-foreground">{":"}</span>{" "}
-                    <span className="text-chart-4">{'"Building things"'}</span>{"\n"}
+                    <span className="text-chart-4">{'"Solving Problems"'}</span>{"\n"}
                     <span className="text-muted-foreground">{"}"}</span>
                   </code>
                 </pre>

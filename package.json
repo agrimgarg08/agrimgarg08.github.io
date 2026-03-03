@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "fetch-github": "node scripts/fetch-github-data.mjs",
     "export": "next build",
     "predeploy": "npm run export",
     "deploy": "gh-pages -d out",

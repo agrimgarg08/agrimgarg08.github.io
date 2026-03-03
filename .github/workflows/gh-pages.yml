@@ -34,9 +34,9 @@ jobs:
         run: pnpm install
 
       - name: Fetch GitHub contribution data
-        # Uses a secret token that stays on the server — never baked into the bundle
+        # Fine-grained PAT stored as GH_DATA_TOKEN repo secret — never baked into the bundle
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_DATA_TOKEN }}
+          GH_DATA_TOKEN: ${{ secrets.GH_DATA_TOKEN }}
           GITHUB_HANDLE: agrimgarg08
         run: node scripts/fetch-github-data.mjs
 

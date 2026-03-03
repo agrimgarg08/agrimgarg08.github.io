@@ -117,16 +117,27 @@ function mergeHeatmaps(heatmaps: Record<Platform, HeatmapEntry[]>) {
 }
 
 function calcStreaks(entries: HeatmapEntry[]) {
+  const todayUTC = new Date()
+  const todayMidnightUTC = Date.UTC(
+    todayUTC.getUTCFullYear(), todayUTC.getUTCMonth(), todayUTC.getUTCDate()
+  )
+
   let max = 0
   let current = 0
-  let prevDateStr: string | null = null
+  let lastActiveDateStr: string | null = null
+
   entries.forEach(({ date, count }) => {
+    // Skip future dates — GitHub API fills the full calendar year with zeros,
+    // and those future zeros would reset `current` to 0 after today's streak.
+    const entryUTC = Date.UTC(
+      +date.slice(0, 4), +date.slice(5, 7) - 1, +date.slice(8, 10)
+    )
+    if (entryUTC > todayMidnightUTC) return
+
     if (count > 0) {
-      // Compare dates by UTC day number to avoid DST 23/25-hour day bugs
-      if (prevDateStr) {
-        const prev = new Date(prevDateStr)
+      if (lastActiveDateStr) {
+        const prev = new Date(lastActiveDateStr)
         const cur = new Date(date)
-        // diff in whole UTC days
         const diffDays = Math.round(
           (cur.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24)
         )
@@ -135,13 +146,24 @@ function calcStreaks(entries: HeatmapEntry[]) {
         current = 1
       }
       max = Math.max(max, current)
+      lastActiveDateStr = date
     } else {
       current = 0
     }
-    prevDateStr = date
   })
+
+  // Reset current streak if the last active day was more than 1 day ago
+  if (lastActiveDateStr) {
+    const lastActiveUTC = new Date(lastActiveDateStr).getTime()
+    const daysSinceLast = Math.round(
+      (todayMidnightUTC - lastActiveUTC) / (1000 * 60 * 60 * 24)
+    )
+    if (daysSinceLast > 1) current = 0
+  }
+
   return { max, current }
 }
+
 
 function getHeatColor(count: number): string {
   if (count === 0) return "bg-secondary"
@@ -166,7 +188,7 @@ function useCodeforces(handle: string) {
     async function load() {
       try {
         const CACHE_KEY = `codeforces_data_${handle}`
-        const CACHE_EXPIRY = 60 * 60 * 1000 // 1 hour
+        const CACHE_EXPIRY = 30 * 60 * 1000 // 30 minutes
 
         // 1. Check Cache
         const cachedStr = localStorage.getItem(CACHE_KEY)
@@ -270,7 +292,7 @@ function useCodeforces(handle: string) {
   return { heatmap, ratingHistory, contests, totalSolved }
 }
 
-// LeetCode API via alfa-leetcode-api public proxy (works on GitHub Pages / static exports)
+// LeetCode API via self-hosted alfa-leetcode-api deployment on Render
 function useLeetCode(handle: string) {
   const [heatmap, setHeatmap] = useState<HeatmapEntry[]>([])
   const [ratingHistory, setRatingHistory] = useState<RatingEntry[]>([])
@@ -295,7 +317,7 @@ function useLeetCode(handle: string) {
     async function load() {
       try {
         const CACHE_KEY = `leetcode_data_${handle}`
-        const CACHE_EXPIRY = 60 * 60 * 1000 // 1 hour
+        const CACHE_EXPIRY = 30 * 60 * 1000 // 30 minutes
 
         // 1. Check Cache
         const cachedStr = localStorage.getItem(CACHE_KEY)
@@ -315,7 +337,7 @@ function useLeetCode(handle: string) {
         }
 
         // 2. Fetch Base Calendar
-        const calRes = await fetch(`https://alfa-leetcode-api.onrender.com/${handle}/calendar`)
+        const calRes = await fetch(`https://alfa-leetcode-api-local.onrender.com/${handle}/calendar`)
         const calJson = await calRes.json()
 
         const combined: Record<string, number> = {}
@@ -323,7 +345,7 @@ function useLeetCode(handle: string) {
 
         // Fetch all years in parallel to be fast
         const yearFetches = activeYears.map(year =>
-          fetch(`https://alfa-leetcode-api.onrender.com/${handle}/calendar?year=${year}`)
+          fetch(`https://alfa-leetcode-api-local.onrender.com/${handle}/calendar?year=${year}`)
             .then(res => res.json())
             .catch(err => {
               console.warn(`Failed fetching year ${year}`, err)
@@ -354,7 +376,7 @@ function useLeetCode(handle: string) {
         setHeatmap(finalHeatmap)
 
         // 3. Fetch Contest Ranking history
-        const conRes = await fetch(`https://alfa-leetcode-api.onrender.com/${handle}/contest`)
+        const conRes = await fetch(`https://alfa-leetcode-api-local.onrender.com/${handle}/contest`)
         const conJson = await conRes.json()
 
         let prevRating = 1500 // LeetCode starting rating rating
@@ -403,7 +425,7 @@ function useLeetCode(handle: string) {
         // Fetch problems solved count
         let finalSolved = 0
         try {
-          const solvedRes = await fetch(`https://alfa-leetcode-api.onrender.com/${handle}/solved`)
+          const solvedRes = await fetch(`https://alfa-leetcode-api-local.onrender.com/${handle}/solved`)
           const solvedJson = await solvedRes.json()
           finalSolved = solvedJson.solvedProblem || 0
           setTotalSolved(finalSolved)
@@ -448,7 +470,7 @@ function useGitHub(handle: string) {
     async function load() {
       try {
         const CACHE_KEY = `github_data_${handle}`
-        const CACHE_EXPIRY = 60 * 60 * 1000 // 1 hour
+        const CACHE_EXPIRY = 30 * 60 * 1000 // 30 minutes
 
         // 1. Check localStorage cache
         const cachedStr = localStorage.getItem(CACHE_KEY)
@@ -457,7 +479,9 @@ function useGitHub(handle: string) {
             const cached = JSON.parse(cachedStr)
             if (Date.now() - cached.timestamp < CACHE_EXPIRY) {
               setHeatmap(cached.heatmap)
-              setStreaks(cached.streaks)
+              // Always recompute streaks from cached heatmap — never restore a
+              // stale cached value so any fix to calcStreaks takes effect immediately.
+              setStreaks(calcStreaks(cached.heatmap))
               setTotalContributions(cached.totalContributions)
               if (cached.totalRepos != null) setTotalRepos(cached.totalRepos)
               return
@@ -491,7 +515,7 @@ function useGitHub(handle: string) {
           localStorage.setItem(CACHE_KEY, JSON.stringify({
             timestamp: Date.now(),
             heatmap: finalHeatmap,
-            streaks: finalStreaks,
+            // streaks deliberately omitted — always recomputed from heatmap on load
             totalContributions: finalTotal,
             totalRepos: finalRepos,
           }))
@@ -942,7 +966,8 @@ export function CodingStatsSection() {
         {/* Platform summary cards — 3-col full-width */}
         <div className="mb-8 grid grid-cols-3 gap-4">
           {platformList.map((p) => {
-            const lcRating = lc.ratingHistory.slice(-1)[0]?.rating || 0
+            // ratingHistory is sorted descending (newest first), so [0] is the latest
+            const lcRating = lc.ratingHistory[0]?.rating || 0
             const cfRating = cf.ratingHistory.slice(-1)[0]?.rating || 0
             const rank = p.name === "LeetCode"
               ? getLeetCodeRank(lcRating)

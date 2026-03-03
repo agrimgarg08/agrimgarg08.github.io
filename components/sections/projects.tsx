@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { SectionHeading } from "@/components/ui-helpers"
-import { cn } from "@/lib/utils"
 import { ExternalLink, Github, X, ChevronRight } from "lucide-react"
 import { siteConfig } from "@/config/site"
 
@@ -18,106 +17,23 @@ interface Project {
   learnings: string
 }
 
-const projects: Project[] = [
+export const projects: Project[] = [
   {
-    title: "CodeCollab",
-    description: "Real-time collaborative code editor with syntax highlighting, multi-cursor support, and live execution.",
-    longDescription: "A full-featured collaborative coding platform that supports real-time editing with conflict resolution using CRDTs. Features include multi-language syntax highlighting, integrated terminal, and WebSocket-based synchronization for up to 50 concurrent users.",
-    category: "Web",
-    tech: ["Next.js", "TypeScript", "WebSocket", "Redis", "Docker"],
-    github: `${siteConfig.links.github}/codecollab`,
-    live: "https://codecollab.dev",
-    challenges: "Implementing conflict-free replicated data types (CRDTs) for real-time text synchronization without data loss was the core challenge.",
-    learnings: "Deep understanding of distributed systems, operational transforms, and WebSocket optimization for low-latency communication.",
-  },
-  {
-    title: "MLPipeline",
-    description: "Automated ML pipeline for training, evaluating, and deploying machine learning models at scale.",
-    longDescription: "An end-to-end machine learning platform that automates data preprocessing, model training with hyperparameter optimization, evaluation, and deployment. Supports distributed training across multiple GPUs with fault tolerance.",
+    title: "DRISHTI",
+    description: "AI-Driven Sustainability Operating System for Urban Water Systems.",
+    longDescription: "DRISHTI is a lightweight, real-time decision support platform that helps authorities detect pollution early, predict risks, and take targeted action. Instead of waiting for damage, we enable a monitor → predict → intervene strategy.",
     category: "AI/ML",
-    tech: ["Python", "PyTorch", "FastAPI", "Kubernetes", "PostgreSQL"],
-    github: `${siteConfig.links.github}/mlpipeline`,
-    live: "https://mlpipeline.dev",
-    challenges: "Building fault-tolerant distributed training with checkpoint recovery and efficient resource scheduling across GPU nodes.",
-    learnings: "Gained expertise in distributed computing, GPU optimization, and building production ML systems with proper monitoring.",
-  },
-  {
-    title: "DistributedKV",
-    description: "Distributed key-value store with Raft consensus, automatic sharding, and fault tolerance.",
-    longDescription: "A distributed key-value database implementing the Raft consensus protocol for strong consistency. Features automatic data sharding, replica management, and transparent failover with sub-second recovery times.",
-    category: "Systems",
-    tech: ["Go", "gRPC", "Raft", "Protocol Buffers"],
-    github: `${siteConfig.links.github}/distributedkv`,
-    live: "",
-    challenges: "Correctly implementing Raft consensus with log compaction, snapshotting, and membership changes while maintaining linearizability.",
-    learnings: "Thorough understanding of consensus algorithms, network partitioning handling, and performance optimization in distributed storage.",
-  },
-  {
-    title: "AlgoViz",
-    description: "Interactive algorithm visualization platform with 50+ algorithms and step-by-step execution.",
-    longDescription: "An educational platform for visualizing algorithms and data structures. Features step-by-step execution, speed control, custom input, and detailed complexity analysis for each algorithm.",
-    category: "Web",
-    tech: ["React", "TypeScript", "Tailwind CSS", "Canvas API"],
-    github: `${siteConfig.links.github}/algoviz`,
-    live: "https://algoviz.dev",
-    challenges: "Creating smooth animations for complex data structure operations while maintaining accurate state representation.",
-    learnings: "Advanced canvas rendering techniques, animation optimization, and how to make complex algorithms accessible to beginners.",
-  },
-  {
-    title: "CPHelper",
-    description: "CLI tool for competitive programming with auto-testing, template generation, and submission.",
-    longDescription: "A command-line toolkit that streamlines the competitive programming workflow. Auto-parses sample tests from contest pages, generates boilerplate in C++/Python, runs parallel test cases, and submits solutions directly.",
-    category: "Competitive Programming",
-    tech: ["Rust", "Python", "REST APIs", "CLI"],
-    github: `${siteConfig.links.github}/cphelper`,
-    live: "",
-    challenges: "Building a reliable web scraper for multiple competitive programming platforms with varying DOM structures.",
-    learnings: "Rust systems programming, efficient process management, and building developer tools with excellent UX.",
-  },
-  {
-    title: "SmartDeploy",
-    description: "AI-powered deployment platform with automatic rollbacks, canary releases, and cost optimization.",
-    longDescription: "An intelligent deployment platform that uses ML to predict deployment failures, automatically manages canary releases, and optimizes cloud resource allocation to reduce costs by up to 40%.",
-    category: "AI/ML",
-    tech: ["Python", "Kubernetes", "Terraform", "AWS", "React"],
-    github: `${siteConfig.links.github}/smartdeploy`,
-    live: "https://smartdeploy.io",
-    challenges: "Training accurate failure prediction models with limited historical deployment data and high class imbalance.",
-    learnings: "Cloud infrastructure automation, MLOps best practices, and building reliable systems with multiple failure modes.",
-  },
-  {
-    title: "NetSim",
-    description: "Network protocol simulator for TCP/IP, BGP, and OSPF with real-time packet visualization.",
-    longDescription: "A network simulation tool that allows users to design network topologies and simulate packet routing through various protocols. Includes real-time visualization of packet flow, congestion, and routing table updates.",
-    category: "Systems",
-    tech: ["C++", "Qt", "Python", "NetworkX"],
-    github: `${siteConfig.links.github}/netsim`,
-    live: "",
-    challenges: "Accurately simulating timing-dependent network protocols while maintaining interactive visualization performance.",
-    learnings: "Deep understanding of networking protocols, event-driven simulation architecture, and real-time rendering optimization.",
-  },
-  {
-    title: "DataDash",
-    description: "Real-time analytics dashboard with customizable widgets, data connectors, and alerting.",
-    longDescription: "A configurable analytics dashboard platform supporting multiple data sources including SQL databases, REST APIs, and streaming data. Features drag-and-drop widget creation, real-time data refresh, and threshold-based alerting.",
-    category: "Web",
-    tech: ["Next.js", "PostgreSQL", "Redis", "WebSocket", "D3.js"],
-    github: `${siteConfig.links.github}/datadash`,
-    live: "https://datadash.dev",
-    challenges: "Efficiently rendering hundreds of real-time charts while keeping the UI responsive and memory usage bounded.",
-    learnings: "Data visualization at scale, WebSocket connection management, and building extensible plugin architectures.",
+    tech: ["Python", "PostgreSQL", "Scikit-Learn", "Streamlit", "Supabase"],
+    github: "https://github.com/agrimgarg08/drishti",
+    live: "https://drishti-teamrocket.streamlit.app",
+    challenges: "Getting the normalisation scores right for policy simulation and setting up authentication.",
+    learnings: "Learnt about how to build a web app, as this was my first ever project. Also, learnt about open source map APIs and Isolation-Forest algorithm.",
   },
 ]
 
-const categories = ["All", "Web", "AI/ML", "Systems", "Competitive Programming"]
 
 export function ProjectsSection() {
-  const [filter, setFilter] = useState("All")
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
-
-  const filtered = filter === "All"
-    ? projects
-    : projects.filter((p) => p.category === filter)
 
   return (
     <section id="projects" className="px-6 py-24">
@@ -127,31 +43,13 @@ export function ProjectsSection() {
           subtitle="Selected work across systems, web, and AI"
         />
 
-        {/* Filters */}
-        <div className="mb-10 flex flex-wrap items-center justify-center gap-2">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setFilter(cat)}
-              className={cn(
-                "rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
-                filter === cat
-                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-              )}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Grid */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((project) => (
+        {/* Grid/Flex Container */}
+        <div className="flex flex-wrap items-stretch justify-center gap-4 sm:gap-6 lg:gap-8">
+          {projects.map((project) => (
             <button
               key={project.title}
               onClick={() => setSelectedProject(project)}
-              className="group flex flex-col rounded-xl border border-border bg-card p-5 text-left transition-all duration-300 hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5"
+              className="group flex w-full max-w-[340px] flex-col rounded-xl border border-border bg-card p-5 text-left transition-all duration-300 hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5 sm:max-w-[400px]"
             >
               {/* Color bar */}
               <div className="mb-4 h-1 w-12 rounded-full bg-primary/40 transition-all duration-300 group-hover:w-20 group-hover:bg-primary" />

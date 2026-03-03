@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { SectionHeading, AnimatedCounter } from "@/components/ui-helpers"
 import { Code2, Trophy, GitBranch, Zap } from "lucide-react"
 import { siteConfig } from "@/config/site"
+import { projects } from "@/components/sections/projects"
 
 // Reads the cached solved/contest totals written by the coding-stats hooks.
 // Falls back to 0 if the cache isn't populated yet — the AnimatedCounter will
@@ -67,7 +68,7 @@ export function AboutSection() {
   const stats = [
     { icon: Code2, label: "Problems Solved", value: totalSolved },
     { icon: Trophy, label: "Contests", value: totalContests },
-    { icon: GitBranch, label: "Projects Built", value: 15 },
+    { icon: GitBranch, label: "Projects Built", value: projects.length },
     { icon: Zap, label: "Hackathon Wins", value: 5 },
   ]
 

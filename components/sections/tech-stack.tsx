@@ -21,59 +21,40 @@ const categories: Category[] = [
   {
     name: "Languages",
     skills: [
-      { name: "C++", level: "Expert", years: 5 },
+      { name: "C++", level: "Intermediate", years: 1 },
       { name: "Python", level: "Advanced", years: 4 },
-      { name: "TypeScript", level: "Advanced", years: 3 },
-      { name: "JavaScript", level: "Advanced", years: 4 },
-      { name: "Java", level: "Intermediate", years: 2 },
-      { name: "Go", level: "Intermediate", years: 1 },
     ],
   },
   {
     name: "Frontend",
     skills: [
-      { name: "React", level: "Expert", years: 3 },
-      { name: "Next.js", level: "Advanced", years: 3 },
-      { name: "Tailwind CSS", level: "Expert", years: 3 },
-      { name: "Redux", level: "Advanced", years: 2 },
-      { name: "HTML/CSS", level: "Expert", years: 5 },
+      { name: "HTML/CSS", level: "Intermediate", years: 4 },
     ],
   },
   {
     name: "Backend",
     skills: [
-      { name: "Node.js", level: "Advanced", years: 3 },
-      { name: "Express", level: "Advanced", years: 3 },
-      { name: "FastAPI", level: "Intermediate", years: 2 },
-      { name: "GraphQL", level: "Intermediate", years: 2 },
-      { name: "REST APIs", level: "Expert", years: 4 },
+      { name: "FastAPI", level: "Beginner", years: 1 },
     ],
   },
   {
     name: "Databases",
     skills: [
-      { name: "PostgreSQL", level: "Advanced", years: 3 },
-      { name: "MongoDB", level: "Advanced", years: 3 },
-      { name: "Redis", level: "Intermediate", years: 2 },
+      { name: "PostgreSQL", level: "Beginner", years: 1 },
       { name: "MySQL", level: "Intermediate", years: 2 },
     ],
   },
   {
     name: "DevOps & Tools",
     skills: [
-      { name: "Docker", level: "Advanced", years: 2 },
-      { name: "Git", level: "Expert", years: 5 },
-      { name: "Linux", level: "Advanced", years: 4 },
-      { name: "CI/CD", level: "Intermediate", years: 2 },
-      { name: "Nginx", level: "Intermediate", years: 2 },
+      { name: "Git", level: "Beginner", years: 1 },
+      { name: "Linux", level: "Beginner", years: 1 },
     ],
   },
   {
     name: "Cloud",
     skills: [
-      { name: "AWS", level: "Advanced", years: 2 },
-      { name: "GCP", level: "Intermediate", years: 1 },
-      { name: "Firebase", level: "Intermediate", years: 2 },
+      { name: "GCP", level: "Beginner", years: 1 },
     ],
   },
 ]
