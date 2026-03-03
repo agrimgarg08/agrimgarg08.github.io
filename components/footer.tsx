@@ -5,8 +5,8 @@ import { siteConfig } from "@/config/site"
 
 export function Footer() {
   return (
-    <footer className="border-t border-border px-6 py-10">
-      <div className="mb-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center sm:gap-8">
+    <footer className="border-t border-border px-6 py-6">
+      <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center sm:gap-8">
         <a
           href={`mailto:${siteConfig.email}`}
           className="group flex items-center gap-3 text-sm text-muted-foreground transition-colors hover:text-primary"
