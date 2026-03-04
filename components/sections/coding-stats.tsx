@@ -124,41 +124,38 @@ function calcStreaks(entries: HeatmapEntry[]) {
 
   let max = 0
   let current = 0
-  let lastActiveDateStr: string | null = null
+  let lastDate: number | null = null
 
-  entries.forEach(({ date, count }) => {
-    // Skip future dates — GitHub API fills the full calendar year with zeros,
-    // and those future zeros would reset `current` to 0 after today's streak.
-    const entryUTC = Date.UTC(
-      +date.slice(0, 4), +date.slice(5, 7) - 1, +date.slice(8, 10)
-    )
-    if (entryUTC > todayMidnightUTC) return
+  const activeDays = entries
+    .filter(e => e.count > 0)
+    .map(e => Date.UTC(+e.date.slice(0, 4), +e.date.slice(5, 7) - 1, +e.date.slice(8, 10)))
+    .filter(t => t <= todayMidnightUTC)
+    .sort((a, b) => a - b)
 
-    if (count > 0) {
-      if (lastActiveDateStr) {
-        const prev = new Date(lastActiveDateStr)
-        const cur = new Date(date)
-        const diffDays = Math.round(
-          (cur.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24)
-        )
-        current = diffDays === 1 ? current + 1 : 1
+  const uniqueDays = Array.from(new Set(activeDays))
+
+  uniqueDays.forEach(entryUTC => {
+    if (lastDate !== null) {
+      const diffDays = Math.round((entryUTC - lastDate) / 86400000)
+      if (diffDays === 1) {
+        current++
       } else {
         current = 1
       }
-      max = Math.max(max, current)
-      lastActiveDateStr = date
     } else {
-      current = 0
+      current = 1
     }
+    max = Math.max(max, current)
+    lastDate = entryUTC
   })
 
-  // Reset current streak if the last active day was more than 1 day ago
-  if (lastActiveDateStr) {
-    const lastActiveUTC = new Date(lastActiveDateStr).getTime()
-    const daysSinceLast = Math.round(
-      (todayMidnightUTC - lastActiveUTC) / (1000 * 60 * 60 * 24)
-    )
-    if (daysSinceLast > 1) current = 0
+  if (lastDate !== null) {
+    const daysSinceLast = Math.round((todayMidnightUTC - lastDate) / 86400000)
+    if (daysSinceLast > 1) {
+      current = 0
+    }
+  } else {
+    current = 0
   }
 
   return { max, current }
